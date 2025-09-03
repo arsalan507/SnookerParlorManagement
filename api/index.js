@@ -4,13 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
-import basicAuth from 'express-basic-auth';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import path from 'path';
 import url from 'url';
-import { getDB, migrate, closeDB, backupDatabase } from '../server/db.js';
 
 dotenv.config();
 
@@ -44,6 +42,36 @@ app.use(cors({
   credentials: true 
 }));
 
+// Simple in-memory user store for demo (since SQLite is complex on Vercel)
+const users = [
+  {
+    id: 1,
+    username: 'admin',
+    password_hash: '$2b$10$MmsyAQ/AIYtj9P2AKqK7xuVFZXrkHqSzGO/b4z6oxcJ/nWtpCm6oG',
+    role: 'admin',
+    full_name: 'Administrator',
+    email: 'admin@snookerparlor.com',
+    is_active: 1
+  },
+  {
+    id: 2,
+    username: 'employee',
+    password_hash: '$2b$10$as1y4GwSTgV0B.4w6Ap0beEQOWRKrZo4dtSRqxKWOt2XKXFSL3PBa',
+    role: 'employee',
+    full_name: 'Employee',
+    email: 'employee@snookerparlor.com',
+    is_active: 1
+  }
+];
+
+// Simple tables data
+const tables = [
+  { id: 1, type: 'ENGLISH', hourly_rate: 300, status: 'AVAILABLE', light_on: 0 },
+  { id: 2, type: 'ENGLISH', hourly_rate: 300, status: 'AVAILABLE', light_on: 0 },
+  { id: 3, type: 'FRENCH', hourly_rate: 200, status: 'AVAILABLE', light_on: 0 },
+  { id: 4, type: 'FRENCH', hourly_rate: 200, status: 'AVAILABLE', light_on: 0 }
+];
+
 // Authentication middleware
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -55,8 +83,7 @@ const authenticateToken = async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const db = await getDB();
-    const user = await db.get('SELECT * FROM users WHERE id = ? AND is_active = 1', decoded.userId);
+    const user = users.find(u => u.id === decoded.userId && u.is_active === 1);
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -77,9 +104,6 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// Initialize database
-migrate().catch(console.error);
-
 // Authentication endpoints
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -89,8 +113,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
     
-    const db = await getDB();
-    const user = await db.get('SELECT * FROM users WHERE username = ? AND is_active = 1', username);
+    const user = users.find(u => u.username === username && u.is_active === 1);
     
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -102,8 +125,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    await db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id);
-    
     const token = jwt.sign(
       { userId: user.id, username: user.username, role: user.role },
       JWT_SECRET,
@@ -111,12 +132,6 @@ app.post('/api/auth/login', async (req, res) => {
     );
     
     const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const expiresAt = Date.now() + (24 * 60 * 60 * 1000);
-    
-    await db.run(
-      'INSERT INTO user_sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
-      sessionId, user.id, expiresAt
-    );
     
     res.json({
       success: true,
@@ -133,17 +148,74 @@ app.post('/api/auth/login', async (req, res) => {
     
   } catch (error) {
     console.error('❌ Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+    res.status(500).json({ error: 'Login failed: ' + error.message });
   }
+});
+
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  res.json({ success: true, message: 'Logged out successfully' });
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+  res.json({
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+      role: req.user.role,
+      full_name: req.user.full_name,
+      email: req.user.email
+    }
+  });
+});
+
+// Tables endpoint
+app.get('/api/tables', authenticateToken, async (req, res) => {
+  res.json(tables);
+});
+
+// Summary endpoint
+app.get('/api/summary/today', authenticateToken, async (req, res) => {
+  res.json({
+    date: new Date().toISOString().slice(0, 10),
+    total_earnings: 0,
+    total_sessions: 0,
+    friendly_games: 0,
+    english_earnings: 0,
+    french_earnings: 0,
+    active_earnings: 0,
+    active_sessions: 0,
+    projected_earnings: 0
+  });
+});
+
+// Sessions endpoint
+app.get('/api/sessions', authenticateToken, async (req, res) => {
+  res.json({
+    sessions: [],
+    total: 0,
+    limit: 50,
+    offset: 0,
+    has_more: false
+  });
 });
 
 // Health check
 app.get('/api/health', async (req, res) => {
-  res.json({ status: 'healthy', timestamp: Date.now() });
+  res.json({ 
+    status: 'healthy', 
+    timestamp: Date.now(),
+    version: '2.0.0',
+    environment: 'vercel'
+  });
 });
 
 // Serve static files
 app.use(express.static(path.join(__dirname, '..')));
+
+// Catch-all handler for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'index.html'));
+});
 
 // Export for Vercel
 export default app;
