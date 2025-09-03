@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
 // Authentication middleware
 function authenticateToken(req) {
@@ -19,7 +19,9 @@ function authenticateToken(req) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  console.log('📋 Sessions API called:', req.method, req.url);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -27,26 +29,32 @@ export default async function handler(req, res) {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return res.status(200).end();
   }
 
   // Only allow GET requests
   if (req.method !== 'GET') {
+    console.log('❌ Invalid method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     // Authenticate user
     const user = authenticateToken(req);
+    console.log('✅ User authenticated:', user.username);
     
     // Return sessions data (empty for demo)
-    return res.status(200).json({
+    const sessionsData = {
       sessions: [],
       total: 0,
       limit: parseInt(req.query.limit) || 50,
       offset: parseInt(req.query.offset) || 0,
       has_more: false
-    });
+    };
+    
+    console.log('📊 Returning sessions data');
+    return res.status(200).json(sessionsData);
     
   } catch (error) {
     console.error('❌ Sessions API error:', error);
@@ -54,4 +62,4 @@ export default async function handler(req, res) {
       error: error.message || 'Authentication failed'
     });
   }
-}
+};

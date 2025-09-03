@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
 // Authentication middleware
 function authenticateToken(req) {
@@ -19,7 +19,9 @@ function authenticateToken(req) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  console.log('📊 Summary API called:', req.method, req.url);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -27,22 +29,25 @@ export default async function handler(req, res) {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return res.status(200).end();
   }
 
   // Only allow GET requests
   if (req.method !== 'GET') {
+    console.log('❌ Invalid method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     // Authenticate user
     const user = authenticateToken(req);
+    console.log('✅ User authenticated:', user.username);
     
     // Return today's summary
     const today = new Date().toISOString().slice(0, 10);
     
-    return res.status(200).json({
+    const summary = {
       date: today,
       total_earnings: 0,
       total_sessions: 0,
@@ -55,7 +60,10 @@ export default async function handler(req, res) {
       active_earnings: 0,
       active_sessions: 0,
       projected_earnings: 0
-    });
+    };
+    
+    console.log('📈 Returning summary for:', today);
+    return res.status(200).json(summary);
     
   } catch (error) {
     console.error('❌ Summary API error:', error);
@@ -63,4 +71,4 @@ export default async function handler(req, res) {
       error: error.message || 'Authentication failed'
     });
   }
-}
+};

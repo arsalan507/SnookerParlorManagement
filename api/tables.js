@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+const jwt = require('jsonwebtoken');
 
 // Simple tables data for demo
 const tables = [
@@ -27,7 +27,9 @@ function authenticateToken(req) {
   }
 }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
+  console.log('🎯 Tables API called:', req.method, req.url);
+  
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -35,19 +37,23 @@ export default async function handler(req, res) {
 
   // Handle preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('✅ CORS preflight handled');
     return res.status(200).end();
   }
 
   // Only allow GET requests
   if (req.method !== 'GET') {
+    console.log('❌ Invalid method:', req.method);
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
     // Authenticate user
     const user = authenticateToken(req);
+    console.log('✅ User authenticated:', user.username);
     
     // Return tables data
+    console.log('📊 Returning tables data:', tables.length, 'tables');
     return res.status(200).json(tables);
     
   } catch (error) {
@@ -56,4 +62,4 @@ export default async function handler(req, res) {
       error: error.message || 'Authentication failed'
     });
   }
-}
+};
