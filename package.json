@@ -1,17 +1,19 @@
 {
   "name": "cue-master-pro",
-  "version": "2.0.0",
-  "description": "Complete snooker parlor management system with authentication and real-time features",
-  "main": "api/index.js",
-  "scripts": {
-    "start": "node server/server.js",
-    "dev": "cd server && npm run dev",
-    "build": "echo 'No build step required'",
-    "vercel-build": "npm install"
+  "version": "1.0.0",
+  "description": "Professional Snooker Parlor Management System",
+  "main": "index.js",
+  "engines": {
+    "node": "18.x"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.0"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "build": "echo 'Build completed'",
+    "dev": "node server/server.js"
   },
   "keywords": [
     "snooker",
@@ -23,9 +25,6 @@
   ],
   "author": "Arsalan Ahmed",
   "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/arsalan507/SnookerParlorManagement.git"
