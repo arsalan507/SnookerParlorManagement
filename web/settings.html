@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Snooker Parlor</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .settings-container {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 2rem;
+        }
+        
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .settings-title {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .settings-title h1 {
+            color: #00ff88;
+            margin: 0;
+        }
+        
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .settings-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .settings-card h2 {
+            color: #00ff88;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #fff;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.2);
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+            color: #000;
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff3b30 0%, #cc2e26 100%);
+            color: #fff;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .table-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .table-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .table-info {
+            color: #fff;
+        }
+        
+        .table-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-small {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        
+        .success-message, .error-message {
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .success-message {
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+        }
+        
+        .error-message {
+            background: rgba(255, 59, 48, 0.2);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            color: #ff3b30;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: rgba(26, 26, 46, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 2rem;
+            max-width: 400px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .modal h3 {
+            color: #00ff88;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <div class="settings-header">
+            <div class="settings-title">
+                <h1>⚙️ Admin Settings</h1>
+            </div>
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
+        
+        <div class="settings-grid">
+            <!-- General Settings -->
+            <div class="settings-card">
+                <h2>🏢 General Settings</h2>
+                <div id="generalMessage"></div>
+                <form id="generalSettingsForm">
+                    <div class="form-group">
+                        <label for="parlorName">Parlor Name</label>
+                        <input type="text" id="parlorName" name="parlor_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultEnglishRate">Default English Table Rate (₹/hour)</label>
+                        <input type="number" id="defaultEnglishRate" name="default_english_rate" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="defaultFrenchRate">Default French Table Rate (₹/hour)</label>
+                        <input type="number" id="defaultFrenchRate" name="default_french_rate" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="allowFriendlyGames">Allow Friendly Games</label>
+                        <select id="allowFriendlyGames" name="allow_friendly_games">
+                            <option value="true">Yes</option>
+                            <option value="false">No</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save General Settings</button>
+                </form>
+            </div>
+            
+            <!-- Table Management -->
+            <div class="settings-card">
+                <h2>🎱 Table Management</h2>
+                <div id="tableMessage"></div>
+                
+                <!-- Add New Table -->
+                <form id="addTableForm" style="margin-bottom: 2rem;">
+                    <h3 style="color: #fff; margin-bottom: 1rem;">Add New Table</h3>
+                    <div class="form-group">
+                        <label for="tableType">Table Type</label>
+                        <select id="tableType" name="type" required>
+                            <option value="ENGLISH">English</option>
+                            <option value="FRENCH">French</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="hourlyRate">Hourly Rate (₹)</label>
+                        <input type="number" id="hourlyRate" name="hourly_rate" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Table</button>
+                </form>
+                
+                <!-- Existing Tables -->
+                <h3 style="color: #fff; margin-bottom: 1rem;">Existing Tables</h3>
+                <div class="table-list" id="tablesList">
+                    <!-- Tables will be loaded here -->
+                </div>
+            </div>
+            
+            <!-- User Management -->
+            <div class="settings-card">
+                <h2>👥 User Management</h2>
+                <div id="userMessage"></div>
+                <p style="color: rgba(255, 255, 255, 0.7); margin-bottom: 1rem;">
+                    User management features coming soon. Currently using default admin/employee accounts.
+                </p>
+                <div style="background: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 8px;">
+                    <p style="color: #fff; margin: 0.5rem 0;"><strong>Admin:</strong> admin / admin123</p>
+                    <p style="color: #fff; margin: 0.5rem 0;"><strong>Employee:</strong> employee / employee123</p>
+                </div>
+            </div>
+            
+            <!-- System Settings -->
+            <div class="settings-card">
+                <h2>🔧 System Settings</h2>
+                <div id="systemMessage"></div>
+                <form id="systemSettingsForm">
+                    <div class="form-group">
+                        <label for="sessionTimeout">Session Timeout (hours)</label>
+                        <input type="number" id="sessionTimeout" name="session_timeout" min="1" max="168" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="autoBackup">Auto Backup</label>
+                        <select id="autoBackup" name="auto_backup_enabled">
+                            <option value="true">Enabled</option>
+                            <option value="false">Disabled</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save System Settings</button>
+                    <button type="button" class="btn btn-danger" id="backupBtn">Create Backup Now</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Table Modal -->
+    <div id="editTableModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Edit Table</h3>
+            <form id="editTableForm">
+                <input type="hidden" id="editTableId">
+                <div class="form-group">
+                    <label for="editTableType">Table Type</label>
+                    <select id="editTableType" name="type" required>
+                        <option value="ENGLISH">English</option>
+                        <option value="FRENCH">French</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="editHourlyRate">Hourly Rate (₹)</label>
+                    <input type="number" id="editHourlyRate" name="hourly_rate" min="1" required>
+                </div>
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button type="button" class="btn" onclick="closeEditModal()" style="background: #666;">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="settings.js"></script>
+</body>
+</html>

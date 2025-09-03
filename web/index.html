@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>🎱 Snooker Parlor Dashboard</title>
+  
+  <!-- PWA Meta -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles.css" />
+  
+  <!-- Preconnect for better performance -->
+  <link rel="preconnect" href="/">
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <p>Loading Parlor Dashboard...</p>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="app-container" style="display: none;">
+    
+    <!-- Header -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>🎱 Snooker Parlor</h1>
+        <div class="connection-status" id="connection-status">
+          <span class="status-dot offline"></span>
+          <span class="status-text">Connecting...</span>
+        </div>
+      </div>
+      
+      <div class="topbar-stats">
+        <div class="stat-card earnings">
+          <div class="stat-label">Today's Earnings</div>
+          <div class="stat-value" id="total-earnings">₹0</div>
+        </div>
+        <div class="stat-card breakdown">
+          <div class="stat-label">Breakdown</div>
+          <div class="stat-value" id="earnings-breakdown">EN: ₹0 | FR: ₹0</div>
+        </div>
+        <div class="stat-card sessions">
+          <div class="stat-label">Sessions</div>
+          <div class="stat-value" id="session-count">0 (0 friendly)</div>
+        </div>
+        <div class="stat-card active">
+          <div class="stat-label">Active</div>
+          <div class="stat-value" id="active-sessions">0</div>
+        </div>
+      </div>
+      
+      <div class="topbar-controls">
+        <button class="btn btn-icon" id="refresh-btn" title="Refresh Data">
+          <span class="icon">🔄</span>
+        </button>
+        <button class="btn btn-icon" id="reports-btn" title="Reports">
+          <span class="icon">📊</span>
+        </button>
+        <button class="btn btn-icon" id="settings-btn" title="Settings" style="display: none;">
+          <span class="icon">⚙️</span>
+        </button>
+        <button class="btn btn-icon" id="theme-toggle" title="Toggle Theme">
+          <span class="icon">🌙</span>
+        </button>
+        <div class="user-menu">
+          <button class="btn btn-user" id="user-menu-btn">
+            <span class="user-icon">👤</span>
+            <span class="user-name" id="user-name">User</span>
+            <span class="user-role" id="user-role">employee</span>
+          </button>
+          <div class="user-dropdown" id="user-dropdown">
+            <div class="user-info">
+              <div class="user-details">
+                <div class="user-full-name" id="user-full-name">User Name</div>
+                <div class="user-email" id="user-email">user@example.com</div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" id="logout-btn">
+              <span class="icon">🚪</span>
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- Tables Grid -->
+      <section class="tables-section">
+        <div id="tables-grid" class="tables-grid">
+          <!-- Table cards will be dynamically generated -->
+        </div>
+      </section>
+
+      <!-- Quick Actions Bar -->
+      <section class="quick-actions">
+        <button class="btn btn-primary" id="start-all-lights">💡 All Lights ON</button>
+        <button class="btn btn-secondary" id="stop-all-lights">💡 All Lights OFF</button>
+        <button class="btn btn-warning" id="export-today">📥 Export Today</button>
+        <div class="live-clock" id="live-clock">--:--:--</div>
+      </section>
+
+      <!-- Sessions History -->
+      <section class="history-section">
+        <div class="section-header">
+          <h2>📋 Today's Sessions</h2>
+          <div class="section-controls">
+            <input type="date" id="date-filter" class="date-input">
+            <button class="btn btn-sm" id="clear-filter">Clear</button>
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table class="sessions-table" id="sessions-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Table</th>
+                <th>Customer</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration</th>
+                <th>Amount</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-tbody">
+              <!-- Sessions will be dynamically loaded -->
+            </tbody>
+          </table>
+        </div>
+        
+        <div class="table-pagination">
+          <button class="btn btn-sm" id="prev-page" disabled>← Previous</button>
+          <span class="pagination-info" id="pagination-info">Page 1 of 1</span>
+          <button class="btn btn-sm" id="next-page" disabled>Next →</button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- Start Session Modal -->
+    <div id="start-session-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🎯 Start New Session</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <form id="start-session-form" class="modal-body">
+          <input type="hidden" id="selected-table-id">
+          
+          <div class="form-group">
+            <label>Table</label>
+            <div id="selected-table-info" class="table-info"></div>
+          </div>
+          
+          <div class="form-group">
+            <label for="customer-name">Customer Name</label>
+            <input type="text" id="customer-name" class="form-control" placeholder="Enter customer name">
+          </div>
+          
+          <div class="form-group">
+            <label for="customer-phone">Phone Number</label>
+            <input type="tel" id="customer-phone" class="form-control" placeholder="+91 XXXXXXXXXX">
+          </div>
+          
+          <div class="form-group">
+            <label for="session-notes">Notes</label>
+            <textarea id="session-notes" class="form-control" rows="2" placeholder="Any special notes..."></textarea>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="payment-method">Payment Method</label>
+              <select id="payment-method" class="form-control">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="discount-percent">Discount %</label>
+              <input type="number" id="discount-percent" class="form-control" min="0" max="100" value="0">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="is-friendly">
+              <span class="checkmark"></span>
+              Friendly Game (No Billing)
+            </label>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">🎯 Start Session</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Stop Session Modal -->
+    <div id="stop-session-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🛑 Stop Session</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="stop-table-id">
+          
+          <div class="session-summary" id="session-summary">
+            <!-- Session details will be populated -->
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="final-payment-method">Payment Method</label>
+              <select id="final-payment-method" class="form-control">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="final-discount">Final Discount %</label>
+              <input type="number" id="final-discount" class="form-control" min="0" max="100" value="0">
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-stop">🛑 Stop & Bill</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reports Modal -->
+    <div id="reports-modal" class="modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h3>📊 Reports & Analytics</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="reports-tabs">
+            <button class="tab-btn active" data-tab="daily">Daily Report</button>
+            <button class="tab-btn" data-tab="weekly">Weekly Summary</button>
+            <button class="tab-btn" data-tab="customers">Top Customers</button>
+          </div>
+          
+          <div class="tab-content">
+            <div id="daily-tab" class="tab-pane active">
+              <div class="report-controls">
+                <input type="date" id="report-date" class="form-control">
+                <button class="btn btn-primary" id="generate-report">Generate</button>
+                <button class="btn btn-secondary" id="download-csv">Download CSV</button>
+              </div>
+              <div id="daily-report-content"></div>
+            </div>
+            
+            <div id="weekly-tab" class="tab-pane">
+              <div id="weekly-report-content"></div>
+            </div>
+            
+            <div id="customers-tab" class="tab-pane">
+              <div id="customers-report-content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+  </div>
+
+  <!-- Scripts -->
+  <script src="/app.js"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker registered'))
+        .catch(err => console.error('❌ Service Worker registration failed:', err));
+    }
+  </script>
+</body>
+</html>

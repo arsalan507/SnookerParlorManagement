@@ -1,137 +1,305 @@
-# 🎱 Snooker Parlor Calculator
+# 🎱 Snooker Parlor Management System
 
-A simple, elegant web-based calculator designed for snooker parlors to track table usage and calculate billing for up to 8 tables.
+A comprehensive, full-featured snooker parlor management system with real-time table tracking, user authentication, financial management, and advanced business features.
 
-## ✨ Features
+## ✨ Current Features
 
-- **8 Table Management**: Individual tracking for up to 8 snooker tables
-- **Visual Table Representation**: Realistic snooker table design with green felt and black pockets
-- **Flexible Hourly Rates**: Set different rates for each table
-- **Real-time Calculations**: Automatic updates as you type
-- **Enter Key Support**: Press Enter in hours field for quick calculation
-- **Grand Total**: Automatic sum of all table charges
-- **Responsive Design**: Works on desktop, tablet, and mobile devices
-- **Modern UI**: Glass-morphism design with smooth animations
+### 🔐 **Authentication & Security**
+- **Role-Based Access Control**: Admin and Employee user roles
+- **Secure Authentication**: JWT-based login with bcrypt password hashing
+- **Session Management**: Automatic logout and session tracking
+- **Protected Routes**: API endpoints secured based on user permissions
 
-## 🚀 Demo
+### 🎯 **Table Management**
+- **Dynamic Table Operations**: Add, edit, delete tables with different types
+- **Real-Time Status Tracking**: Live updates for table availability
+- **Session Management**: Start, pause, resume, stop sessions
+- **Hardware Integration**: Light control system (ready for Arduino integration)
+- **Table Types**: Support for English and French snooker tables
 
-![Snooker Calculator Preview](https://via.placeholder.com/800x600/0f4c3a/ffffff?text=Snooker+Calculator+Preview)
+### 💰 **Financial Management**
+- **Real-Time Billing**: Automatic calculation based on time and rates
+- **Payment Methods**: Cash, UPI, Card payment tracking
+- **Discount System**: Percentage-based discounts
+- **Daily Summaries**: Earnings breakdown by table type and payment method
+- **Financial Reports**: CSV export and detailed session history
 
-## 📱 Usage
+### 👥 **Customer Management**
+- **Customer Profiles**: Name, phone number, and session history
+- **Friendly Games**: Non-billable sessions for practice
+- **Session Notes**: Custom notes for each session
+- **Customer Analytics**: Track customer playing patterns
 
-1. **Set Rates**: Adjust the hourly rate for each table (default: ₹100/hour)
-2. **Enter Hours**: Input the number of hours played (supports decimals like 1.5)
-3. **Calculate**: Press Enter or click the Calculate button
-4. **View Totals**: See individual table costs and the grand total
+### ⚙️ **Admin Settings**
+- **Parlor Configuration**: Customize parlor name and settings
+- **Pricing Management**: Set different rates for table types
+- **System Settings**: Configure session timeouts and features
+- **Database Management**: Backup and restore functionality
 
-## 🛠️ Installation
+### 📱 **Modern Web App**
+- **Progressive Web App (PWA)**: Install as mobile/desktop app
+- **Offline Support**: Service worker for offline functionality
+- **Real-Time Updates**: Server-Sent Events for live notifications
+- **Responsive Design**: Works on all devices and screen sizes
 
-### Option 1: Direct Download
-1. Download the `index.html` file
-2. Open it in any web browser
-3. Start calculating!
+## 🚀 Quick Start
 
-### Option 2: Clone Repository
+### Prerequisites
+- Node.js 16+ installed
+- npm or yarn package manager
+
+### Installation
+
+1. **Clone the repository**
 ```bash
 git clone https://github.com/arsalan507/SnookerParlorManagement.git
 cd SnookerParlorManagement
 ```
 
-### Option 3: GitHub Pages
-Deploy directly to GitHub Pages:
-1. Fork this repository
-2. Go to Settings > Pages
-3. Select source branch
-4. Access via: `https://arsalan507.github.io/SnookerParlorManagement`
-
-## 💻 Technical Details
-
-- **Pure HTML/CSS/JavaScript**: No external dependencies
-- **Responsive Grid Layout**: Adapts to different screen sizes
-- **Local Storage**: Not used - all data is session-based
-- **Modern CSS**: Uses backdrop-filter, flexbox, and grid
-- **Cross-browser Compatible**: Works on all modern browsers
-
-## 🎨 Customization
-
-### Changing Default Rates
-Edit the `value` attribute in the rate input fields:
-```html
-<input type="number" id="rate1" value="150" min="0" step="10">
+2. **Install server dependencies**
+```bash
+cd server
+npm install
 ```
 
-### Modifying Colors
-Update the CSS variables in the `:root` selector or modify the gradient:
-```css
-background: linear-gradient(135deg, #0f4c3a, #1a5c47);
+3. **Set up environment variables**
+```bash
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
-### Adding More Tables
-1. Copy a table card HTML structure
-2. Update the IDs (rate9, hours9, total9)
-3. Add corresponding JavaScript functionality
+4. **Start the server**
+```bash
+npm start
+```
 
-## 📋 Features Breakdown
+5. **Access the application**
+Open your browser and navigate to `http://localhost:8080`
 
-| Feature | Description |
-|---------|-------------|
-| **Table Visual** | CSS-based snooker table with realistic appearance |
-| **Hourly Rates** | Customizable rates per table |
-| **Time Tracking** | Support for decimal hours (e.g., 1.5 hours) |
-| **Auto-calculation** | Real-time updates without page refresh |
-| **Grand Total** | Automatic summation of all table charges |
-| **Keyboard Support** | Enter key for quick calculations |
-| **Mobile Friendly** | Responsive design for all devices |
+### Default Login Credentials
+
+**Admin Access** (Full Features)
+- Username: `admin`
+- Password: `admin123`
+
+**Employee Access** (Basic Features)
+- Username: `employee`
+- Password: `employee123`
+
+## 📊 System Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Frontend      │    │   Backend       │    │   Database      │
+│   (Web App)     │◄──►│   (Node.js)     │◄──►│   (SQLite)      │
+│                 │    │                 │    │                 │
+│ • React-like UI │    │ • Express.js    │    │ • User Auth     │
+│ • PWA Features  │    │ • JWT Auth      │    │ • Tables        │
+│ • Real-time     │    │ • SSE Events    │    │ • Sessions      │
+│ • Offline       │    │ • RESTful API   │    │ • Customers     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 🛠️ Technology Stack
+
+### Backend
+- **Node.js** - Runtime environment
+- **Express.js** - Web framework
+- **SQLite** - Database
+- **JWT** - Authentication
+- **bcrypt** - Password hashing
+- **Server-Sent Events** - Real-time updates
+
+### Frontend
+- **Vanilla JavaScript** - Core functionality
+- **CSS3** - Modern styling with animations
+- **Service Worker** - PWA and offline support
+- **HTML5** - Semantic markup
+
+### DevOps
+- **Docker** - Containerization
+- **Docker Compose** - Multi-container orchestration
+- **Environment Variables** - Configuration management
+
+## 📋 API Documentation
+
+### Authentication Endpoints
+```
+POST /api/auth/login     - User login
+POST /api/auth/logout    - User logout
+GET  /api/auth/me        - Get current user info
+```
+
+### Table Management
+```
+GET    /api/tables           - Get all tables
+POST   /api/admin/tables     - Create new table (Admin)
+PATCH  /api/admin/tables/:id - Update table (Admin)
+DELETE /api/admin/tables/:id - Delete table (Admin)
+```
+
+### Session Management
+```
+POST /api/table/:id/start  - Start session
+POST /api/table/:id/pause  - Pause session
+POST /api/table/:id/resume - Resume session
+POST /api/table/:id/stop   - Stop session
+```
+
+### Reports & Analytics
+```
+GET /api/summary/today        - Today's summary
+GET /api/sessions             - Session history
+GET /api/reports/daily.csv    - Export daily report
+```
+
+## 🎯 User Roles & Permissions
+
+### Admin Users
+- ✅ Full dashboard access
+- ✅ Settings page access
+- ✅ Add/edit/delete tables
+- ✅ Modify pricing and configuration
+- ✅ View all reports and analytics
+- ✅ User management (future)
+
+### Employee Users
+- ✅ Dashboard access
+- ✅ Start/stop sessions
+- ✅ View session history
+- ✅ Basic reporting
+- ❌ No settings access
+- ❌ Cannot modify tables or pricing
+
+## 📈 Feature Roadmap
+
+For detailed information about completed features and future development plans, see our comprehensive [**Feature Roadmap**](FEATURE_ROADMAP.md).
+
+### 🎯 **Next Phase Development**
+1. **Inventory Management** - Track equipment and consumables
+2. **Staff Management** - Employee scheduling and payroll
+3. **Membership System** - Customer loyalty and tiers
+4. **Advanced Reporting** - Business intelligence and analytics
+5. **Mobile App** - Native iOS/Android applications
+
+## 🐳 Docker Deployment
+
+### Using Docker Compose (Recommended)
+```bash
+docker-compose up -d
+```
+
+### Manual Docker Build
+```bash
+# Build the image
+docker build -t snooker-parlor .
+
+# Run the container
+docker run -p 8080:8080 -v $(pwd)/data:/app/data snooker-parlor
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+```bash
+# Server Configuration
+PORT=8080
+NODE_ENV=production
+
+# Database
+DATABASE_PATH=./data/parlor.db
+
+# Authentication
+JWT_SECRET=your-secret-key-here
+ADMIN_USER=admin
+ADMIN_PASS=admin123
+
+# Hardware Integration (Optional)
+HARDWARE_ENABLED=false
+ARDUINO_HOST=192.168.1.100
+
+# CORS
+CORS_ORIGIN=http://localhost:8080
+```
+
+### Hardware Integration
+The system supports Arduino-based hardware integration for:
+- Table light control
+- Automatic session detection
+- IoT sensor integration
+
+See [Hardware Integration Guide](docs/Hardware_Integration.md) for setup instructions.
+
+## 🧪 Testing
+
+### Manual Testing
+1. Start the server: `npm start`
+2. Open browser to `http://localhost:8080`
+3. Test login with provided credentials
+4. Verify table operations and session management
+
+### API Testing
+Use tools like Postman or curl to test API endpoints:
+```bash
+# Login
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+# Get tables (with auth token)
+curl -X GET http://localhost:8080/api/tables \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+We welcome contributions! Please see our [Feature Roadmap](FEATURE_ROADMAP.md) for planned features and development priorities.
 
-### Development Guidelines
-- Keep the design simple and functional
-- Maintain cross-browser compatibility
-- Follow existing code style
-- Test on mobile devices
+### Development Setup
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and test thoroughly
+4. Commit your changes: `git commit -m 'Add amazing feature'`
+5. Push to the branch: `git push origin feature/amazing-feature`
+6. Open a Pull Request
+
+### Code Style
+- Use consistent indentation (2 spaces)
+- Follow existing naming conventions
+- Add comments for complex logic
+- Test on multiple browsers/devices
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎯 Use Cases
+## 🆘 Support & Issues
 
-- **Snooker Parlors**: Track table usage and billing
-- **Pool Halls**: Adapt for pool table management
-- **Gaming Centers**: Modify for other hourly-rate activities
-- **Small Businesses**: Template for time-based billing systems
+- **Documentation**: Check our [Feature Roadmap](FEATURE_ROADMAP.md)
+- **Issues**: [GitHub Issues](https://github.com/arsalan507/SnookerParlorManagement/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/arsalan507/SnookerParlorManagement/discussions)
 
-## 🔧 Browser Support
+## 📊 Project Status
 
-- Chrome 60+
-- Firefox 55+
-- Safari 12+
-- Edge 79+
+| Component | Status | Coverage |
+|-----------|--------|----------|
+| **Core Operations** | ✅ Complete | 90% |
+| **Authentication** | ✅ Complete | 95% |
+| **Financial Management** | ✅ Mostly Complete | 70% |
+| **Advanced Features** | 🚧 In Development | 15% |
+| **Mobile App** | 📋 Planned | 0% |
 
-## 📞 Support
+**Overall System Maturity: 45%**
 
-If you encounter any issues or have suggestions for improvements, please:
-1. Check existing [Issues](https://github.com/arsalan507/SnookerParlorManagement/issues)
-2. Create a new issue with detailed description
-3. Include browser and device information
+## 🌟 Acknowledgments
 
-## 🚀 Future Enhancements
-
-- [ ] Timer functionality for active sessions
-- [ ] Customer name tracking
-- [ ] Print receipt functionality
-- [ ] Data export (CSV/PDF)
-- [ ] Multi-day session tracking
-- [ ] Discount management
-- [ ] Table booking system
-
-## ⭐ Show Your Support
-
-Give a ⭐️ if this project helped you!
+- Built with modern web technologies
+- Inspired by real snooker parlor management needs
+- Community-driven feature development
+- Open source and free to use
 
 ---
 
-**Made with ❤️ for snooker parlor owners**
+**🎱 Made with ❤️ for snooker parlor owners worldwide**
+
+*Transform your snooker business with modern technology*
