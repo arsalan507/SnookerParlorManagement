@@ -1,745 +1,310 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snooker Parlor Calculator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0f4c3a, #1a5c47);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #fff;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .tables-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .table-card {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 15px;
-            padding: 20px;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            cursor: pointer;
-        }
-
-        .table-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-        }
-
-        .table-card.active {
-            border: 2px solid #00ff00;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
-        }
-
-        .table-visual {
-            width: 100%;
-            height: 120px;
-            background: #228B22;
-            border-radius: 10px;
-            position: relative;
-            margin-bottom: 15px;
-            border: 4px solid #8B4513;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
-        }
-
-        .table-visual::before {
-            content: '';
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
-            bottom: 10px;
-            border: 2px solid #FFD700;
-            border-radius: 5px;
-        }
-
-        .pocket {
-            position: absolute;
-            width: 15px;
-            height: 15px;
-            background: #000;
-            border-radius: 50%;
-        }
-
-        .pocket.top-left { top: 5px; left: 5px; }
-        .pocket.top-right { top: 5px; right: 5px; }
-        .pocket.middle-left { top: 50%; left: 5px; transform: translateY(-50%); }
-        .pocket.middle-right { top: 50%; right: 5px; transform: translateY(-50%); }
-        .pocket.bottom-left { bottom: 5px; left: 5px; }
-        .pocket.bottom-right { bottom: 5px; right: 5px; }
-
-        .table-info {
-            text-align: center;
-        }
-
-        .table-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #FFD700;
-        }
-
-        .rate-input {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .rate-input label {
-            font-weight: bold;
-        }
-
-        .rate-input input {
-            width: 80px;
-            padding: 8px;
-            border: none;
-            border-radius: 5px;
-            text-align: center;
-            font-size: 1em;
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-        }
-
-        .timer-display {
-            font-size: 1.5em;
-            font-weight: bold;
-            margin: 15px 0;
-            color: #FFD700;
-            min-height: 30px;
-        }
-
-        .timer-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            justify-content: center;
-        }
-
-        .timer-btn {
-            padding: 10px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: background 0.3s ease;
-            flex: 1;
-        }
-
-        .start-btn {
-            background: #00ff00;
-            color: #333;
-        }
-
-        .start-btn:hover {
-            background: #00cc00;
-        }
-
-        .start-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-
-        .stop-btn {
-            background: #ff4444;
-            color: white;
-        }
-
-        .stop-btn:hover {
-            background: #cc0000;
-        }
-
-        .stop-btn:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
-
-        .total-display {
-            margin-top: 15px;
-            padding: 10px;
-            background: rgba(255, 215, 0, 0.2);
-            border-radius: 5px;
-            text-align: center;
-            font-size: 1.1em;
-            font-weight: bold;
-            min-height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .session-count {
-            font-size: 0.9em;
-            color: #ccc;
-            margin-top: 5px;
-        }
-
-        .grand-total {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 20px;
-            text-align: center;
-            margin-top: 30px;
-            backdrop-filter: blur(10px);
-            border: 2px solid #FFD700;
-        }
-
-        .grand-total h2 {
-            color: #FFD700;
-            margin-bottom: 10px;
-        }
-
-        .grand-total-amount {
-            font-size: 2em;
-            font-weight: bold;
-            color: #fff;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.8);
-        }
-
-        .modal-content {
-            background: linear-gradient(135deg, #0f4c3a, #1a5c47);
-            margin: 5% auto;
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 2px solid #FFD700;
-        }
-
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        .close:hover {
-            color: #fff;
-        }
-
-        .history-item {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 10px;
-            border-left: 4px solid #FFD700;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .session-time {
-            color: #FFD700;
-            font-weight: bold;
-        }
-
-        .session-amount {
-            color: #00ff00;
-            font-weight: bold;
-            font-size: 1.2em;
-        }
-
-        .session-details {
-            font-size: 0.9em;
-            color: #ccc;
-        }
-
-        .total-summary {
-            background: rgba(255, 215, 0, 0.2);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .clear-history-btn {
-            background: #ff4444;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            width: 100%;
-        }
-
-        .clear-history-btn:hover {
-            background: #cc0000;
-        }
-    </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>🎱 Snooker Parlor Dashboard</title>
+  
+  <!-- PWA Meta -->
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="/styles.css" />
+  
+  <!-- Preconnect for better performance -->
+  <link rel="preconnect" href="/">
 </head>
 <body>
-    <div class="container">
-        <h1>🎱 Snooker Parlor Calculator 🎱</h1>
+  <!-- Loading Screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-spinner"></div>
+    <p>Loading Parlor Dashboard...</p>
+  </div>
+
+  <!-- App Container -->
+  <div id="app" class="app-container" style="display: none;">
+    
+    <!-- Header -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>🎱 Snooker Parlor</h1>
+        <div class="connection-status" id="connection-status">
+          <span class="status-dot offline"></span>
+          <span class="status-text">Connecting...</span>
+        </div>
+      </div>
+      
+      <div class="topbar-stats">
+        <div class="stat-card earnings">
+          <div class="stat-label">Today's Earnings</div>
+          <div class="stat-value" id="total-earnings">₹0</div>
+        </div>
+        <div class="stat-card breakdown">
+          <div class="stat-label">Breakdown</div>
+          <div class="stat-value" id="earnings-breakdown">EN: ₹0 | FR: ₹0</div>
+        </div>
+        <div class="stat-card sessions">
+          <div class="stat-label">Sessions</div>
+          <div class="stat-value" id="session-count">0 (0 friendly)</div>
+        </div>
+        <div class="stat-card active">
+          <div class="stat-label">Active</div>
+          <div class="stat-value" id="active-sessions">0</div>
+        </div>
+      </div>
+      
+      <div class="topbar-controls">
+        <button class="btn btn-icon" id="refresh-btn" title="Refresh Data">
+          <span class="icon">🔄</span>
+        </button>
+        <button class="btn btn-icon" id="reports-btn" title="Reports">
+          <span class="icon">📊</span>
+        </button>
+        <button class="btn btn-icon" id="settings-btn" title="Settings" style="display: none;">
+          <span class="icon">⚙️</span>
+        </button>
+        <button class="btn btn-icon" id="theme-toggle" title="Toggle Theme">
+          <span class="icon">🌙</span>
+        </button>
+        <div class="user-menu">
+          <button class="btn btn-user" id="user-menu-btn">
+            <span class="user-icon">👤</span>
+            <span class="user-name" id="user-name">User</span>
+            <span class="user-role" id="user-role">employee</span>
+          </button>
+          <div class="user-dropdown" id="user-dropdown">
+            <div class="user-info">
+              <div class="user-details">
+                <div class="user-full-name" id="user-full-name">User Name</div>
+                <div class="user-email" id="user-email">user@example.com</div>
+              </div>
+            </div>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" id="logout-btn">
+              <span class="icon">🚪</span>
+              Logout
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      
+      <!-- Tables Grid -->
+      <section class="tables-section">
+        <div id="tables-grid" class="tables-grid">
+          <!-- Table cards will be dynamically generated -->
+        </div>
+      </section>
+
+      <!-- Quick Actions Bar -->
+      <section class="quick-actions">
+        <button class="btn btn-primary" id="start-all-lights">💡 All Lights ON</button>
+        <button class="btn btn-secondary" id="stop-all-lights">💡 All Lights OFF</button>
+        <button class="btn btn-warning" id="export-today">📥 Export Today</button>
+        <div class="live-clock" id="live-clock">--:--:--</div>
+      </section>
+
+      <!-- Sessions History -->
+      <section class="history-section">
+        <div class="section-header">
+          <h2>📋 Today's Sessions</h2>
+          <div class="section-controls">
+            <input type="date" id="date-filter" class="date-input">
+            <button class="btn btn-sm" id="clear-filter">Clear</button>
+          </div>
+        </div>
         
-        <div class="tables-grid">
-            <!-- Table 1 -->
-            <div class="table-card" onclick="showHistory(1)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 1</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹100/hour</label>
-                    </div>
-                    <div class="timer-display" id="timer1">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start1" onclick="event.stopPropagation(); startTimer(1)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop1" onclick="event.stopPropagation(); stopTimer(1)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total1">₹0</div>
-                    <div class="session-count" id="count1">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 2 -->
-            <div class="table-card" onclick="showHistory(2)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 2</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹100/hour</label>
-                    </div>
-                    <div class="timer-display" id="timer2">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start2" onclick="event.stopPropagation(); startTimer(2)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop2" onclick="event.stopPropagation(); stopTimer(2)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total2">₹0</div>
-                    <div class="session-count" id="count2">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 3 -->
-            <div class="table-card" onclick="showHistory(3)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 3</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹100/hour</label>
-                    </div>
-                    <div class="timer-display" id="timer3">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start3" onclick="event.stopPropagation(); startTimer(3)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop3" onclick="event.stopPropagation(); stopTimer(3)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total3">₹0</div>
-                    <div class="session-count" id="count3">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 4 -->
-            <div class="table-card" onclick="showHistory(4)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 4</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹</label>
-                        <input type="number" id="rate4" value="100" min="0" step="10" onclick="event.stopPropagation()">
-                        <span>/hour</span>
-                    </div>
-                    <div class="timer-display" id="timer4">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start4" onclick="event.stopPropagation(); startTimer(4)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop4" onclick="event.stopPropagation(); stopTimer(4)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total4">₹0</div>
-                    <div class="session-count" id="count4">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 5 -->
-            <div class="table-card" onclick="showHistory(5)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 5</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹</label>
-                        <input type="number" id="rate5" value="100" min="0" step="10" onclick="event.stopPropagation()">
-                        <span>/hour</span>
-                    </div>
-                    <div class="timer-display" id="timer5">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start5" onclick="event.stopPropagation(); startTimer(5)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop5" onclick="event.stopPropagation(); stopTimer(5)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total5">₹0</div>
-                    <div class="session-count" id="count5">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 6 -->
-            <div class="table-card" onclick="showHistory(6)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 6</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹</label>
-                        <input type="number" id="rate6" value="100" min="0" step="10" onclick="event.stopPropagation()">
-                        <span>/hour</span>
-                    </div>
-                    <div class="timer-display" id="timer6">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start6" onclick="event.stopPropagation(); startTimer(6)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop6" onclick="event.stopPropagation(); stopTimer(6)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total6">₹0</div>
-                    <div class="session-count" id="count6">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 7 -->
-            <div class="table-card" onclick="showHistory(7)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 7</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹</label>
-                        <input type="number" id="rate7" value="100" min="0" step="10" onclick="event.stopPropagation()">
-                        <span>/hour</span>
-                    </div>
-                    <div class="timer-display" id="timer7">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start7" onclick="event.stopPropagation(); startTimer(7)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop7" onclick="event.stopPropagation(); stopTimer(7)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total7">₹0</div>
-                    <div class="session-count" id="count7">Sessions today: 0</div>
-                </div>
-            </div>
-
-            <!-- Table 8 -->
-            <div class="table-card" onclick="showHistory(8)">
-                <div class="table-visual">
-                    <div class="pocket top-left"></div>
-                    <div class="pocket top-right"></div>
-                    <div class="pocket middle-left"></div>
-                    <div class="pocket middle-right"></div>
-                    <div class="pocket bottom-left"></div>
-                    <div class="pocket bottom-right"></div>
-                </div>
-                <div class="table-info">
-                    <div class="table-title">Table 8</div>
-                    <div class="rate-input">
-                        <label>Rate: ₹</label>
-                        <input type="number" id="rate8" value="100" min="0" step="10" onclick="event.stopPropagation()">
-                        <span>/hour</span>
-                    </div>
-                    <div class="timer-display" id="timer8">00:00:00</div>
-                    <div class="timer-controls">
-                        <button class="timer-btn start-btn" id="start8" onclick="event.stopPropagation(); startTimer(8)">Start</button>
-                        <button class="timer-btn stop-btn" id="stop8" onclick="event.stopPropagation(); stopTimer(8)" disabled>Stop</button>
-                    </div>
-                    <div class="total-display" id="total8">₹0</div>
-                    <div class="session-count" id="count8">Sessions today: 0</div>
-                </div>
-            </div>
+        <div class="table-container">
+          <table class="sessions-table" id="sessions-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Table</th>
+                <th>Customer</th>
+                <th>Start</th>
+                <th>End</th>
+                <th>Duration</th>
+                <th>Amount</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-tbody">
+              <!-- Sessions will be dynamically loaded -->
+            </tbody>
+          </table>
         </div>
-
-        <div class="grand-total">
-            <h2>Grand Total</h2>
-            <div class="grand-total-amount" id="grandTotal">₹0</div>
+        
+        <div class="table-pagination">
+          <button class="btn btn-sm" id="prev-page" disabled>← Previous</button>
+          <span class="pagination-info" id="pagination-info">Page 1 of 1</span>
+          <button class="btn btn-sm" id="next-page" disabled>Next →</button>
         </div>
+      </section>
+
+    </main>
+
+    <!-- Modals -->
+    
+    <!-- Start Session Modal -->
+    <div id="start-session-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🎯 Start New Session</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <form id="start-session-form" class="modal-body">
+          <input type="hidden" id="selected-table-id">
+          
+          <div class="form-group">
+            <label>Table</label>
+            <div id="selected-table-info" class="table-info"></div>
+          </div>
+          
+          <div class="form-group">
+            <label for="customer-name">Customer Name</label>
+            <input type="text" id="customer-name" class="form-control" placeholder="Enter customer name">
+          </div>
+          
+          <div class="form-group">
+            <label for="customer-phone">Phone Number</label>
+            <input type="tel" id="customer-phone" class="form-control" placeholder="+91 XXXXXXXXXX">
+          </div>
+          
+          <div class="form-group">
+            <label for="session-notes">Notes</label>
+            <textarea id="session-notes" class="form-control" rows="2" placeholder="Any special notes..."></textarea>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="payment-method">Payment Method</label>
+              <select id="payment-method" class="form-control">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="discount-percent">Discount %</label>
+              <input type="number" id="discount-percent" class="form-control" min="0" max="100" value="0">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="is-friendly">
+              <span class="checkmark"></span>
+              Friendly Game (No Billing)
+            </label>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">🎯 Start Session</button>
+          </div>
+        </form>
+      </div>
     </div>
 
-    <!-- History Modal -->
-    <div id="historyModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2 id="modalTitle">Table History</h2>
-            <div id="modalContent"></div>
+    <!-- Stop Session Modal -->
+    <div id="stop-session-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>🛑 Stop Session</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
         </div>
+        <div class="modal-body">
+          <input type="hidden" id="stop-table-id">
+          
+          <div class="session-summary" id="session-summary">
+            <!-- Session details will be populated -->
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="final-payment-method">Payment Method</label>
+              <select id="final-payment-method" class="form-control">
+                <option value="CASH">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="CARD">Card</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="final-discount">Final Discount %</label>
+              <input type="number" id="final-discount" class="form-control" min="0" max="100" value="0">
+            </div>
+          </div>
+          
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-stop">🛑 Stop & Bill</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <script>
-        // Fixed hourly rate for all tables
-        const HOURLY_RATE = 100;
-        let timers = {};
-        let startTimes = {};
+    <!-- Reports Modal -->
+    <div id="reports-modal" class="modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h3>📊 Reports & Analytics</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="reports-tabs">
+            <button class="tab-btn active" data-tab="daily">Daily Report</button>
+            <button class="tab-btn" data-tab="weekly">Weekly Summary</button>
+            <button class="tab-btn" data-tab="customers">Top Customers</button>
+          </div>
+          
+          <div class="tab-content">
+            <div id="daily-tab" class="tab-pane active">
+              <div class="report-controls">
+                <input type="date" id="report-date" class="form-control">
+                <button class="btn btn-primary" id="generate-report">Generate</button>
+                <button class="btn btn-secondary" id="download-csv">Download CSV</button>
+              </div>
+              <div id="daily-report-content"></div>
+            </div>
+            
+            <div id="weekly-tab" class="tab-pane">
+              <div id="weekly-report-content"></div>
+            </div>
+            
+            <div id="customers-tab" class="tab-pane">
+              <div id="customers-report-content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-        // Initialize data for all tables
-        for (let i = 1; i <= 8; i++) {
-            tableData[i] = {
-                sessions: [],
-                dailyTotal: 0
-            };
-        }
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
 
-        function formatTime(seconds) {
-            const hours = Math.floor(seconds / 3600);
-            const minutes = Math.floor((seconds % 3600) / 60);
-            const secs = seconds % 60;
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+  </div>
 
-        function roundToNearest10(amount) {
-            return Math.round(amount / 10) * 10;
-        }
-
-        function startTimer(tableNum) {
-            // Disable start button, enable stop button
-            document.getElementById('start' + tableNum).disabled = true;
-            document.getElementById('stop' + tableNum).disabled = false;
-            
-            // Add active class to table
-            document.querySelector('.table-card:nth-child(' + tableNum + ')').classList.add('active');
-            
-            // Record start time
-            startTimes[tableNum] = new Date();
-            
-            // Start the timer display
-            let seconds = 0;
-            timers[tableNum] = setInterval(() => {
-                seconds++;
-                document.getElementById('timer' + tableNum).textContent = formatTime(seconds);
-            }, 1000);
-        }
-
-        function stopTimer(tableNum) {
-            // Stop the timer
-            clearInterval(timers[tableNum]);
-            
-            // Enable start button, disable stop button
-            document.getElementById('start' + tableNum).disabled = false;
-            document.getElementById('stop' + tableNum).disabled = true;
-            
-            // Remove active class from table
-            document.querySelector('.table-card:nth-child(' + tableNum + ')').classList.remove('active');
-            
-            // Calculate session details
-            const endTime = new Date();
-            const duration = Math.floor((endTime - startTimes[tableNum]) / 1000); // in seconds
-            const hours = duration / 3600; // convert to hours
-            const rate = HOURLY_RATE; // Use fixed rate
-            const amount = roundToNearest10(rate * hours);
-            
-            // Create session record
-            const session = {
-                startTime: startTimes[tableNum].toLocaleTimeString(),
-                endTime: endTime.toLocaleTimeString(),
-                duration: duration,
-                durationFormatted: formatTime(duration),
-                rate: rate,
-                amount: amount,
-                date: new Date().toLocaleDateString()
-            };
-            
-            // Store session data
-            tableData[tableNum].sessions.push(session);
-            tableData[tableNum].dailyTotal += amount;
-            
-            // Update displays
-            document.getElementById('total' + tableNum).textContent = '₹' + amount;
-            document.getElementById('count' + tableNum).textContent = 'Sessions today: ' + tableData[tableNum].sessions.length;
-            
-            // Reset timer display
-            document.getElementById('timer' + tableNum).textContent = '00:00:00';
-            
-            // Update grand total
-            updateGrandTotal();
-        }
-
-        function updateGrandTotal() {
-            let grandTotal = 0;
-            
-            for (let i = 1; i <= 8; i++) {
-                grandTotal += tableData[i].dailyTotal;
-            }
-            
-            document.getElementById('grandTotal').textContent = '₹' + grandTotal;
-        }
-
-        function showHistory(tableNum) {
-            const modal = document.getElementById('historyModal');
-            const modalTitle = document.getElementById('modalTitle');
-            const modalContent = document.getElementById('modalContent');
-            
-            modalTitle.textContent = `Table ${tableNum} - Daily History`;
-            
-            const data = tableData[tableNum];
-            let content = '';
-            
-            // Summary section
-            content += `
-                <div class="total-summary">
-                    <h3>Today's Summary</h3>
-                    <p><strong>Total Sessions:</strong> ${data.sessions.length}</p>
-                    <p><strong>Total Revenue:</strong> ₹${data.dailyTotal}</p>
-                    <p><strong>Total Playing Time:</strong> ${getTotalPlayingTime(data.sessions)}</p>
-                </div>
-            `;
-            
-            if (data.sessions.length === 0) {
-                content += '<p style="text-align: center; color: #ccc;">No sessions recorded today.</p>';
-            } else {
-                content += '<h3 style="margin-bottom: 15px;">Session History:</h3>';
-                
-                // Reverse to show latest sessions first
-                const reversedSessions = [...data.sessions].reverse();
-                
-                reversedSessions.forEach((session, index) => {
-                    content += `
-                        <div class="history-item">
-                            <div class="history-header">
-                                <span class="session-time">Session ${data.sessions.length - index}</span>
-                                <span class="session-amount">₹${session.amount}</span>
-                            </div>
-                            <div class="session-details">
-                                <p><strong>Time:</strong> ${session.startTime} - ${session.endTime}</p>
-                                <p><strong>Duration:</strong> ${session.durationFormatted}</p>
-                                <p><strong>Rate:</strong> ₹${session.rate}/hour</p>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                content += `
-                    <button class="clear-history-btn" onclick="clearTableHistory(${tableNum})">
-                        Clear Today's History
-                    </button>
-                `;
-            }
-            
-            modalContent.innerHTML = content;
-            modal.style.display = 'block';
-        }
-
-        function getTotalPlayingTime(sessions) {
-            const totalSeconds = sessions.reduce((sum, session) => sum + session.duration, 0);
-            return formatTime(totalSeconds);
-        }
-
-        function clearTableHistory(tableNum) {
-            tableData[tableNum] = {
-                sessions: [],
-                dailyTotal: 0
-            };
-            
-            // Update displays
-            document.getElementById('total' + tableNum).textContent = '₹0';
-            document.getElementById('count' + tableNum).textContent = 'Sessions today: 0';
-            
-            // Update grand total
-            updateGrandTotal();
-            
-            // Close modal
-            closeModal();
-        }
-
-        function closeModal() {
-            document.getElementById('historyModal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside of it
-        window.onclick = function(event) {
-            const modal = document.getElementById('historyModal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
-
-        // Initialize session counts on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            for (let i = 1; i <= 8; i++) {
-                document.getElementById('count' + i).textContent = 'Sessions today: 0';
-            }
-        });
-    </script>
+  <!-- Scripts -->
+  <script src="/app.js"></script>
+  
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('✅ Service Worker registered'))
+        .catch(err => console.error('❌ Service Worker registration failed:', err));
+    }
+  </script>
 </body>
 </html>

@@ -1,0 +1,149 @@
+// Vercel serverless function entry point
+import express from 'express';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
+import basicAuth from 'express-basic-auth';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+import path from 'path';
+import url from 'url';
+import { getDB, migrate, closeDB, backupDatabase } from '../server/db.js';
+
+dotenv.config();
+
+const __dirname = path.dirname(url.fileURLToPath(import.meta.url));
+const JWT_SECRET = process.env.JWT_SECRET || 'snooker-parlor-secret-key-change-in-production';
+const app = express();
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: 'Too many requests from this IP'
+});
+app.use(limiter);
+
+// Body parsing and logging
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+
+// CORS
+const corsOrigins = process.env.CORS_ORIGIN?.split(',') || ['https://cue-master-pro.vercel.app'];
+app.use(cors({ 
+  origin: corsOrigins,
+  credentials: true 
+}));
+
+// Authentication middleware
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ error: 'Access token required' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const db = await getDB();
+    const user = await db.get('SELECT * FROM users WHERE id = ? AND is_active = 1', decoded.userId);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: 'Invalid or expired token' });
+  }
+};
+
+// Admin role middleware
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  next();
+};
+
+// Initialize database
+migrate().catch(console.error);
+
+// Authentication endpoints
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password required' });
+    }
+    
+    const db = await getDB();
+    const user = await db.get('SELECT * FROM users WHERE username = ? AND is_active = 1', username);
+    
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    await db.run('UPDATE users SET last_login = ? WHERE id = ?', Date.now(), user.id);
+    
+    const token = jwt.sign(
+      { userId: user.id, username: user.username, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+    
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const expiresAt = Date.now() + (24 * 60 * 60 * 1000);
+    
+    await db.run(
+      'INSERT INTO user_sessions (id, user_id, expires_at) VALUES (?, ?, ?)',
+      sessionId, user.id, expiresAt
+    );
+    
+    res.json({
+      success: true,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        full_name: user.full_name,
+        email: user.email
+      },
+      sessionId
+    });
+    
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+// Health check
+app.get('/api/health', async (req, res) => {
+  res.json({ status: 'healthy', timestamp: Date.now() });
+});
+
+// Serve static files
+app.use(express.static(path.join(__dirname, '..')));
+
+// Export for Vercel
+export default app;
