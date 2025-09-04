@@ -910,26 +910,477 @@ app.get('/api/sessions', async (req, res) => {
 
 app.get('/api/customers', async (req, res) => {
   try {
-    const { search, limit = 20 } = req.query;
+    const { search, limit = 20, membership_type } = req.query;
     const db = await getDB();
-    
+
     let query = 'SELECT * FROM customers';
     let params = [];
-    
-    if (search) {
-      query += ' WHERE name LIKE ? OR phone LIKE ?';
-      params.push(`%${search}%`, `%${search}%`);
+
+    if (search || membership_type) {
+      const conditions = [];
+      if (search) {
+        conditions.push('(name LIKE ? OR phone LIKE ?)');
+        params.push(`%${search}%`, `%${search}%`);
+      }
+      if (membership_type) {
+        // Handle comma-separated membership types
+        const membershipTypes = membership_type.split(',').map(type => type.trim());
+        if (membershipTypes.length === 1) {
+          conditions.push('membership_type = ?');
+          params.push(membershipTypes[0]);
+        } else {
+          const placeholders = membershipTypes.map(() => '?').join(',');
+          conditions.push(`membership_type IN (${placeholders})`);
+          params.push(...membershipTypes);
+        }
+      }
+      query += ' WHERE ' + conditions.join(' AND ');
     }
-    
+
     query += ' ORDER BY last_visit DESC LIMIT ?';
     params.push(parseInt(limit));
-    
+
+    console.log('🔍 Customers query:', { query, params, membership_type });
     const customers = await db.all(query, ...params);
+    console.log('📊 Customers found:', customers.length, customers.map(c => ({ id: c.id, name: c.name, membership_type: c.membership_type })));
+
     res.json(customers);
-    
+
   } catch (error) {
     console.error('❌ Error fetching customers:', error);
     res.status(500).json({ error: 'Failed to fetch customers' });
+  }
+});
+
+app.get('/api/customers/:id', authenticateToken, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const customer = await db.get('SELECT * FROM customers WHERE id = ?', customerId);
+
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    res.json(customer);
+
+  } catch (error) {
+    console.error('❌ Error fetching customer:', error);
+    res.status(500).json({ error: 'Failed to fetch customer' });
+  }
+});
+
+app.post('/api/customers', authenticateToken, async (req, res) => {
+  try {
+    const {
+      name, phone, email, date_of_birth, address,
+      membership_type = 'REGULAR', membership_start_date,
+      membership_expiry_date, emergency_contact, notes
+    } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Name and phone are required' });
+    }
+
+    const db = await getDB();
+
+    // Check if customer with this phone already exists
+    const existingCustomer = await db.get('SELECT * FROM customers WHERE phone = ?', phone);
+    if (existingCustomer) {
+      return res.status(409).json({ error: 'Customer with this phone number already exists' });
+    }
+
+    const result = await db.run(`
+      INSERT INTO customers (
+        name, phone, email, date_of_birth, address,
+        membership_type, membership_start_date, membership_expiry_date,
+        emergency_contact, notes, last_visit
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, name, phone, email, date_of_birth, address,
+       membership_type, membership_start_date, membership_expiry_date,
+       emergency_contact, notes, Date.now());
+
+    const newCustomer = await db.get('SELECT * FROM customers WHERE id = ?', result.lastID);
+    res.json({ success: true, customer: newCustomer });
+
+  } catch (error) {
+    console.error('❌ Error creating customer:', error);
+    res.status(500).json({ error: 'Failed to create customer' });
+  }
+});
+
+// ===== MEMBERSHIP SYSTEM ENDPOINTS =====
+
+// Membership Tiers
+app.get('/api/membership/tiers', authenticateToken, async (req, res) => {
+  try {
+    const db = await getDB();
+    const tiers = await db.all('SELECT * FROM membership_tiers WHERE is_active = 1 ORDER BY monthly_fee');
+    res.json(tiers);
+  } catch (error) {
+    console.error('❌ Error fetching membership tiers:', error);
+    res.status(500).json({ error: 'Failed to fetch membership tiers' });
+  }
+});
+
+app.post('/api/membership/tiers', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      name, description, monthly_fee, annual_fee, session_discount_percent,
+      consumable_discount_percent, priority_booking, free_sessions_per_month,
+      points_multiplier, min_spending_requirement
+    } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO membership_tiers (
+        name, description, monthly_fee, annual_fee, session_discount_percent,
+        consumable_discount_percent, priority_booking, free_sessions_per_month,
+        points_multiplier, min_spending_requirement
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, name, description, monthly_fee, annual_fee, session_discount_percent,
+       consumable_discount_percent, priority_booking, free_sessions_per_month,
+       points_multiplier, min_spending_requirement);
+
+    const newTier = await db.get('SELECT * FROM membership_tiers WHERE id = ?', result.lastID);
+    res.json({ success: true, tier: newTier });
+
+  } catch (error) {
+    console.error('❌ Error creating membership tier:', error);
+    res.status(500).json({ error: 'Failed to create membership tier' });
+  }
+});
+
+// Customer Membership Management
+app.patch('/api/customers/:id/membership', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const { membership_type, membership_start_date, membership_expiry_date } = req.body;
+
+    const db = await getDB();
+
+    // Update customer membership
+    await db.run(`
+      UPDATE customers SET
+        membership_type = ?,
+        membership_start_date = ?,
+        membership_expiry_date = ?,
+        membership_status = 'ACTIVE',
+        updated_at = ?
+      WHERE id = ?
+    `, membership_type, membership_start_date, membership_expiry_date, now(), customerId);
+
+    // Get updated customer
+    const customer = await db.get('SELECT * FROM customers WHERE id = ?', customerId);
+    res.json({ success: true, customer });
+
+  } catch (error) {
+    console.error('❌ Error updating customer membership:', error);
+    res.status(500).json({ error: 'Failed to update customer membership' });
+  }
+});
+
+// Loyalty Points System
+app.get('/api/customers/:id/loyalty', authenticateToken, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const db = await getDB();
+
+    // Get customer loyalty info
+    const customer = await db.get('SELECT loyalty_points, membership_type FROM customers WHERE id = ?', customerId);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Get recent transactions
+    const transactions = await db.all(`
+      SELECT * FROM loyalty_transactions
+      WHERE customer_id = ?
+      ORDER BY created_at DESC LIMIT 10
+    `, customerId);
+
+    res.json({
+      current_points: customer.loyalty_points,
+      membership_type: customer.membership_type,
+      transactions
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching customer loyalty:', error);
+    res.status(500).json({ error: 'Failed to fetch customer loyalty' });
+  }
+});
+
+app.post('/api/customers/:id/loyalty/earn', authenticateToken, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const { points, description, reference_id, reference_type } = req.body;
+
+    const db = await getDB();
+
+    // Get current points
+    const customer = await db.get('SELECT loyalty_points FROM customers WHERE id = ?', customerId);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const previousBalance = customer.loyalty_points;
+    const newBalance = previousBalance + points;
+
+    // Record transaction
+    const result = await db.run(`
+      INSERT INTO loyalty_transactions (
+        customer_id, transaction_type, points, previous_balance,
+        new_balance, reference_id, reference_type, description
+      ) VALUES (?, 'EARNED', ?, ?, ?, ?, ?, ?)
+    `, customerId, points, previousBalance, newBalance, reference_id, reference_type, description);
+
+    // Update customer points
+    await db.run('UPDATE customers SET loyalty_points = ? WHERE id = ?', newBalance, customerId);
+
+    const transaction = await db.get('SELECT * FROM loyalty_transactions WHERE id = ?', result.lastID);
+    res.json({ success: true, transaction, new_balance: newBalance });
+
+  } catch (error) {
+    console.error('❌ Error earning loyalty points:', error);
+    res.status(500).json({ error: 'Failed to earn loyalty points' });
+  }
+});
+
+app.post('/api/customers/:id/loyalty/redeem', authenticateToken, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const { points, description } = req.body;
+
+    const db = await getDB();
+
+    // Get current points
+    const customer = await db.get('SELECT loyalty_points FROM customers WHERE id = ?', customerId);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    if (customer.loyalty_points < points) {
+      return res.status(400).json({ error: 'Insufficient loyalty points' });
+    }
+
+    const previousBalance = customer.loyalty_points;
+    const newBalance = previousBalance - points;
+
+    // Record transaction
+    const result = await db.run(`
+      INSERT INTO loyalty_transactions (
+        customer_id, transaction_type, points, previous_balance,
+        new_balance, description
+      ) VALUES (?, 'REDEEMED', ?, ?, ?, ?)
+    `, customerId, points, previousBalance, newBalance, description);
+
+    // Update customer points
+    await db.run('UPDATE customers SET loyalty_points = ? WHERE id = ?', newBalance, customerId);
+
+    const transaction = await db.get('SELECT * FROM loyalty_transactions WHERE id = ?', result.lastID);
+    res.json({ success: true, transaction, new_balance: newBalance });
+
+  } catch (error) {
+    console.error('❌ Error redeeming loyalty points:', error);
+    res.status(500).json({ error: 'Failed to redeem loyalty points' });
+  }
+});
+
+// Membership Rewards
+app.get('/api/membership/rewards', authenticateToken, async (req, res) => {
+  try {
+    const db = await getDB();
+    const rewards = await db.all('SELECT * FROM membership_rewards WHERE is_active = 1 ORDER BY name');
+    res.json(rewards);
+  } catch (error) {
+    console.error('❌ Error fetching membership rewards:', error);
+    res.status(500).json({ error: 'Failed to fetch membership rewards' });
+  }
+});
+
+app.post('/api/membership/rewards', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, description, reward_type, value, item_id, min_tier } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO membership_rewards (name, description, reward_type, value, item_id, min_tier)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `, name, description, reward_type, value, item_id, min_tier);
+
+    const newReward = await db.get('SELECT * FROM membership_rewards WHERE id = ?', result.lastID);
+    res.json({ success: true, reward: newReward });
+
+  } catch (error) {
+    console.error('❌ Error creating membership reward:', error);
+    res.status(500).json({ error: 'Failed to create membership reward' });
+  }
+});
+
+// Customer Analytics
+app.get('/api/customers/:id/analytics', authenticateToken, async (req, res) => {
+  try {
+    const customerId = parseInt(req.params.id);
+    const db = await getDB();
+
+    // Get customer basic info
+    const customer = await db.get('SELECT * FROM customers WHERE id = ?', customerId);
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Get all session history for this customer
+    const allSessions = await db.all(`
+      SELECT s.*, t.type as table_type, t.hourly_rate
+      FROM sessions s
+      JOIN tables t ON s.table_id = t.id
+      WHERE s.customer_phone = ?
+      ORDER BY s.start_time DESC
+    `, customer.phone);
+
+    // Calculate basic analytics
+    const totalSessions = allSessions.length;
+    const totalSpent = allSessions.reduce((sum, s) => sum + (s.amount || 0), 0);
+    const avgSessionDuration = totalSessions > 0 ?
+      allSessions.reduce((sum, s) => sum + (s.billed_minutes || 0), 0) / totalSessions : 0;
+
+    // Calculate spending by month (last 12 months)
+    const monthlySpending = {};
+    const currentDate = new Date();
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const monthKey = date.toISOString().slice(0, 7); // YYYY-MM format
+      monthlySpending[monthKey] = 0;
+    }
+
+    allSessions.forEach(session => {
+      if (session.start_time && session.amount) {
+        const sessionDate = new Date(session.start_time);
+        const monthKey = sessionDate.toISOString().slice(0, 7);
+        if (monthlySpending.hasOwnProperty(monthKey)) {
+          monthlySpending[monthKey] += session.amount;
+        }
+      }
+    });
+
+    // Calculate table usage statistics
+    const tableUsage = {};
+    allSessions.forEach(session => {
+      const tableType = session.table_type;
+      if (!tableUsage[tableType]) {
+        tableUsage[tableType] = {
+          sessions: 0,
+          total_spent: 0,
+          total_duration: 0
+        };
+      }
+      tableUsage[tableType].sessions += 1;
+      tableUsage[tableType].total_spent += session.amount || 0;
+      tableUsage[tableType].total_duration += session.billed_minutes || 0;
+    });
+
+    // Generate streak calendar data (last 365 days)
+    const streakData = {};
+    const oneYearAgo = Date.now() - (365 * 24 * 60 * 60 * 1000);
+
+    // Initialize all days with 0
+    for (let i = 0; i < 365; i++) {
+      const date = new Date(Date.now() - (i * 24 * 60 * 60 * 1000));
+      const dateKey = date.toISOString().slice(0, 10);
+      streakData[dateKey] = 0;
+    }
+
+    // Mark days with sessions
+    allSessions.forEach(session => {
+      if (session.start_time && session.start_time > oneYearAgo) {
+        const sessionDate = new Date(session.start_time);
+        const dateKey = sessionDate.toISOString().slice(0, 10);
+        if (streakData.hasOwnProperty(dateKey)) {
+          streakData[dateKey] += 1; // Count sessions per day
+        }
+      }
+    });
+
+    // Calculate current streak
+    let currentStreak = 0;
+    let maxStreak = 0;
+    let tempStreak = 0;
+
+    const sortedDates = Object.keys(streakData).sort();
+    for (const date of sortedDates) {
+      if (streakData[date] > 0) {
+        tempStreak++;
+        maxStreak = Math.max(maxStreak, tempStreak);
+      } else {
+        tempStreak = 0;
+      }
+    }
+
+    // Current streak (from today backwards)
+    for (let i = 0; i < sortedDates.length; i++) {
+      const date = sortedDates[sortedDates.length - 1 - i];
+      if (streakData[date] > 0) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+
+    // Get recent sessions (last 10)
+    const recentSessions = allSessions.slice(0, 10);
+
+    // Get loyalty transactions
+    const loyaltyTransactions = await db.all(`
+      SELECT * FROM loyalty_transactions
+      WHERE customer_id = ?
+      ORDER BY created_at DESC LIMIT 10
+    `, customerId);
+
+    // Calculate additional metrics
+    const paidSessions = allSessions.filter(s => !s.is_friendly).length;
+    const friendlySessions = totalSessions - paidSessions;
+    const avgSpendingPerSession = totalSessions > 0 ? totalSpent / totalSessions : 0;
+
+    // Peak hours analysis
+    const hourlyStats = {};
+    for (let i = 0; i < 24; i++) {
+      hourlyStats[i] = 0;
+    }
+
+    allSessions.forEach(session => {
+      if (session.start_time) {
+        const hour = new Date(session.start_time).getHours();
+        hourlyStats[hour]++;
+      }
+    });
+
+    res.json({
+      customer,
+      analytics: {
+        total_sessions: totalSessions,
+        paid_sessions: paidSessions,
+        friendly_sessions: friendlySessions,
+        total_spent: totalSpent,
+        avg_session_duration: Math.round(avgSessionDuration),
+        avg_spending_per_session: Math.round(avgSpendingPerSession),
+        loyalty_points: customer.loyalty_points,
+        membership_type: customer.membership_type,
+        current_streak: currentStreak,
+        max_streak: maxStreak,
+        monthly_spending: monthlySpending,
+        table_usage: tableUsage,
+        hourly_stats: hourlyStats
+      },
+      streak_data: streakData,
+      recent_sessions: recentSessions,
+      loyalty_transactions: loyaltyTransactions
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching customer analytics:', error);
+    res.status(500).json({ error: 'Failed to fetch customer analytics' });
   }
 });
 
@@ -939,28 +1390,28 @@ app.get('/api/reports/daily.csv', async (req, res) => {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
     const startTime = new Date(date + 'T00:00:00Z').getTime();
     const endTime = startTime + 24 * 60 * 60 * 1000;
-    
+
     const db = await getDB();
     const sessions = await db.all(`
-      SELECT s.*, t.type as table_type 
-      FROM sessions s 
-      JOIN tables t ON s.table_id = t.id 
-      WHERE s.start_time >= ? AND s.start_time < ? 
+      SELECT s.*, t.type as table_type
+      FROM sessions s
+      JOIN tables t ON s.table_id = t.id
+      WHERE s.start_time >= ? AND s.start_time < ?
       ORDER BY s.table_id, s.start_time
     `, startTime, endTime);
-    
+
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="daily-report-${date}.csv"`);
-    
+
     // CSV Header
     const headers = [
       'Session ID', 'Table', 'Table Type', 'Customer Name', 'Customer Phone',
       'Start Time', 'End Time', 'Duration (min)', 'Amount', 'Payment Method',
       'Friendly Game', 'Discount %', 'Break Count', 'Notes'
     ].join(',');
-    
+
     res.write(headers + '\n');
-    
+
     // CSV Data
     for (const session of sessions) {
       const row = [
@@ -979,15 +1430,809 @@ app.get('/api/reports/daily.csv', async (req, res) => {
         session.break_count || 0,
         (session.notes || '').replace(/,/g, ';')
       ].join(',');
-      
+
       res.write(row + '\n');
     }
-    
+
     res.end();
-    
+
   } catch (error) {
     console.error('❌ Error generating CSV report:', error);
     res.status(500).json({ error: 'Failed to generate report' });
+  }
+});
+
+// ===== INVENTORY MANAGEMENT ENDPOINTS =====
+
+// Equipment Inventory
+app.get('/api/inventory/equipment', authenticateToken, async (req, res) => {
+  try {
+    const { category, low_stock } = req.query;
+    const db = await getDB();
+
+    let query = 'SELECT e.*, v.name as supplier_name FROM equipment_inventory e LEFT JOIN vendors v ON e.supplier_id = v.id';
+    let params = [];
+    let conditions = [];
+
+    if (category) {
+      conditions.push('e.category = ?');
+      params.push(category);
+    }
+
+    if (low_stock === 'true') {
+      conditions.push('e.available_quantity <= e.reorder_level');
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY e.category, e.name';
+
+    const equipment = await db.all(query, ...params);
+    res.json(equipment);
+
+  } catch (error) {
+    console.error('❌ Error fetching equipment inventory:', error);
+    res.status(500).json({ error: 'Failed to fetch equipment inventory' });
+  }
+});
+
+app.post('/api/inventory/equipment', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      name, category, description, total_quantity, unit_cost,
+      reorder_level, supplier_id, location, condition_status
+    } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO equipment_inventory (
+        name, category, description, total_quantity, available_quantity,
+        unit_cost, reorder_level, supplier_id, location, condition_status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, name, category, description || '', total_quantity, total_quantity,
+       unit_cost, reorder_level || 5, supplier_id, location || 'Main Storage',
+       condition_status || 'GOOD');
+
+    const newEquipment = await db.get('SELECT * FROM equipment_inventory WHERE id = ?', result.lastID);
+    res.json({ success: true, equipment: newEquipment });
+
+  } catch (error) {
+    console.error('❌ Error creating equipment:', error);
+    res.status(500).json({ error: 'Failed to create equipment' });
+  }
+});
+
+app.patch('/api/inventory/equipment/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const equipmentId = parseInt(req.params.id);
+    const updates = req.body;
+
+    const db = await getDB();
+    const allowedFields = [
+      'name', 'category', 'description', 'total_quantity', 'available_quantity',
+      'damaged_quantity', 'maintenance_quantity', 'unit_cost', 'reorder_level',
+      'supplier_id', 'location', 'condition_status', 'last_inventory_check'
+    ];
+
+    const setClause = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => `${field} = ?`).join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => updates[field]);
+    values.push(equipmentId);
+
+    await db.run(`UPDATE equipment_inventory SET ${setClause} WHERE id = ?`, ...values);
+
+    const updatedEquipment = await db.get('SELECT * FROM equipment_inventory WHERE id = ?', equipmentId);
+    res.json({ success: true, equipment: updatedEquipment });
+
+  } catch (error) {
+    console.error('❌ Error updating equipment:', error);
+    res.status(500).json({ error: 'Failed to update equipment' });
+  }
+});
+
+app.delete('/api/inventory/equipment/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const equipmentId = parseInt(req.params.id);
+    const db = await getDB();
+
+    await db.run('DELETE FROM equipment_inventory WHERE id = ?', equipmentId);
+    res.json({ success: true, message: 'Equipment deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Error deleting equipment:', error);
+    res.status(500).json({ error: 'Failed to delete equipment' });
+  }
+});
+
+// Consumables Inventory
+app.get('/api/inventory/consumables', authenticateToken, async (req, res) => {
+  try {
+    const { category, low_stock, expiring_soon } = req.query;
+    const db = await getDB();
+
+    let query = 'SELECT c.*, v.name as supplier_name FROM consumables_inventory c LEFT JOIN vendors v ON c.supplier_id = v.id';
+    let params = [];
+    let conditions = [];
+
+    if (category) {
+      conditions.push('c.category = ?');
+      params.push(category);
+    }
+
+    if (low_stock === 'true') {
+      conditions.push('c.current_stock <= c.reorder_level');
+    }
+
+    if (expiring_soon === 'true') {
+      const thirtyDaysFromNow = Date.now() + (30 * 24 * 60 * 60 * 1000);
+      conditions.push('c.expiry_date IS NOT NULL AND c.expiry_date <= ?');
+      params.push(thirtyDaysFromNow);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY c.category, c.name';
+
+    const consumables = await db.all(query, ...params);
+    res.json(consumables);
+
+  } catch (error) {
+    console.error('❌ Error fetching consumables inventory:', error);
+    res.status(500).json({ error: 'Failed to fetch consumables inventory' });
+  }
+});
+
+app.post('/api/inventory/consumables', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      name, category, description, current_stock, unit_cost,
+      reorder_level, supplier_id, expiry_date, storage_location
+    } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO consumables_inventory (
+        name, category, description, current_stock, unit_cost,
+        reorder_level, supplier_id, expiry_date, storage_location
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, name, category, description || '', current_stock, unit_cost,
+       reorder_level || 10, supplier_id, expiry_date, storage_location || 'Pantry');
+
+    const newConsumable = await db.get('SELECT * FROM consumables_inventory WHERE id = ?', result.lastID);
+    res.json({ success: true, consumable: newConsumable });
+
+  } catch (error) {
+    console.error('❌ Error creating consumable:', error);
+    res.status(500).json({ error: 'Failed to create consumable' });
+  }
+});
+
+// Vendors
+app.get('/api/vendors', authenticateToken, async (req, res) => {
+  try {
+    const { active } = req.query;
+    const db = await getDB();
+
+    let query = 'SELECT * FROM vendors';
+    let params = [];
+
+    if (active === 'true') {
+      query += ' WHERE is_active = 1';
+    }
+
+    query += ' ORDER BY name';
+
+    const vendors = await db.all(query, ...params);
+    res.json(vendors);
+
+  } catch (error) {
+    console.error('❌ Error fetching vendors:', error);
+    res.status(500).json({ error: 'Failed to fetch vendors' });
+  }
+});
+
+app.post('/api/vendors', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { name, contact_person, phone, email, address, payment_terms, rating } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO vendors (name, contact_person, phone, email, address, payment_terms, rating)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, name, contact_person, email, phone, address, payment_terms || 'Net 30', rating || 5);
+
+    const newVendor = await db.get('SELECT * FROM vendors WHERE id = ?', result.lastID);
+    res.json({ success: true, vendor: newVendor });
+
+  } catch (error) {
+    console.error('❌ Error creating vendor:', error);
+    res.status(500).json({ error: 'Failed to create vendor' });
+  }
+});
+
+// Inventory Transactions
+app.get('/api/inventory/transactions', authenticateToken, async (req, res) => {
+  try {
+    const { item_type, item_id, limit = 50, offset = 0 } = req.query;
+    const db = await getDB();
+
+    let query = 'SELECT t.*, u.full_name as performed_by_name FROM inventory_transactions t LEFT JOIN users u ON t.performed_by = u.id';
+    let params = [];
+    let conditions = [];
+
+    if (item_type) {
+      conditions.push('t.item_type = ?');
+      params.push(item_type);
+    }
+
+    if (item_id) {
+      conditions.push('t.item_id = ?');
+      params.push(parseInt(item_id));
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY t.created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+
+    const transactions = await db.all(query, ...params);
+
+    // Get total count
+    let countQuery = 'SELECT COUNT(*) as total FROM inventory_transactions t';
+    if (conditions.length > 0) {
+      countQuery += ' WHERE ' + conditions.join(' AND ');
+    }
+    const countResult = await db.get(countQuery, ...params.slice(0, -2));
+
+    res.json({
+      transactions,
+      total: countResult.total,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      has_more: countResult.total > parseInt(offset) + parseInt(limit)
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching inventory transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory transactions' });
+  }
+});
+
+app.post('/api/inventory/transactions', authenticateToken, async (req, res) => {
+  try {
+    const {
+      item_type, item_id, transaction_type, quantity,
+      reference_id, reference_type, notes
+    } = req.body;
+
+    const db = await getDB();
+
+    // Get current stock
+    let currentStock;
+    if (item_type === 'EQUIPMENT') {
+      const item = await db.get('SELECT available_quantity FROM equipment_inventory WHERE id = ?', item_id);
+      currentStock = item ? item.available_quantity : 0;
+    } else {
+      const item = await db.get('SELECT current_stock FROM consumables_inventory WHERE id = ?', item_id);
+      currentStock = item ? item.current_stock : 0;
+    }
+
+    // Calculate new stock
+    let newStock = currentStock;
+    if (transaction_type === 'PURCHASE' || transaction_type === 'ADJUSTMENT') {
+      newStock += quantity;
+    } else {
+      newStock -= quantity;
+    }
+
+    // Record transaction
+    const result = await db.run(`
+      INSERT INTO inventory_transactions (
+        item_type, item_id, transaction_type, quantity,
+        previous_stock, new_stock, reference_id, reference_type,
+        notes, performed_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, item_type, item_id, transaction_type, quantity,
+       currentStock, newStock, reference_id, reference_type,
+       notes, req.user.id);
+
+    // Update inventory
+    if (item_type === 'EQUIPMENT') {
+      await db.run('UPDATE equipment_inventory SET available_quantity = ? WHERE id = ?',
+                   newStock, item_id);
+    } else {
+      await db.run('UPDATE consumables_inventory SET current_stock = ? WHERE id = ?',
+                   newStock, item_id);
+    }
+
+    const transaction = await db.get('SELECT * FROM inventory_transactions WHERE id = ?', result.lastID);
+    res.json({ success: true, transaction });
+
+  } catch (error) {
+    console.error('❌ Error creating inventory transaction:', error);
+    res.status(500).json({ error: 'Failed to create inventory transaction' });
+  }
+});
+
+// ===== STAFF MANAGEMENT ENDPOINTS =====
+
+// Staff Profiles
+app.get('/api/staff', authenticateToken, async (req, res) => {
+  try {
+    const { active } = req.query;
+    const db = await getDB();
+
+    let query = `
+      SELECT sp.*, u.username, u.email, u.role, u.last_login
+      FROM staff_profiles sp
+      JOIN users u ON sp.user_id = u.id
+    `;
+    let params = [];
+    let conditions = [];
+
+    if (active === 'true') {
+      conditions.push('sp.is_active = 1');
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY sp.full_name';
+
+    const staff = await db.all(query, ...params);
+    res.json(staff);
+
+  } catch (error) {
+    console.error('❌ Error fetching staff:', error);
+    res.status(500).json({ error: 'Failed to fetch staff' });
+  }
+});
+
+app.post('/api/staff', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      username, password, full_name, email, role,
+      employee_id, phone, emergency_contact, address,
+      date_of_birth, hire_date, department, position,
+      hourly_rate, monthly_salary, employment_type, manager_id
+    } = req.body;
+
+    const db = await getDB();
+
+    // Hash password
+    const bcrypt = await import('bcrypt');
+    const password_hash = await bcrypt.hash(password, 10);
+
+    // Create user account
+    const userResult = await db.run(`
+      INSERT INTO users (username, password_hash, role, full_name, email)
+      VALUES (?, ?, ?, ?, ?)
+    `, username, password_hash, role || 'employee', full_name, email);
+
+    // Create staff profile
+    await db.run(`
+      INSERT INTO staff_profiles (
+        user_id, employee_id, full_name, phone, emergency_contact, address,
+        date_of_birth, hire_date, department, position, hourly_rate,
+        monthly_salary, employment_type, manager_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, userResult.lastID, employee_id, full_name, phone, emergency_contact, address,
+       date_of_birth, hire_date, department || 'Operations', position,
+       hourly_rate || 0, monthly_salary || 0, employment_type || 'Full-time', manager_id);
+
+    const staff = await db.get(`
+      SELECT sp.*, u.username, u.email, u.role
+      FROM staff_profiles sp
+      JOIN users u ON sp.user_id = u.id
+      WHERE sp.user_id = ?
+    `, userResult.lastID);
+
+    res.json({ success: true, staff });
+
+  } catch (error) {
+    console.error('❌ Error creating staff member:', error);
+    res.status(500).json({ error: 'Failed to create staff member' });
+  }
+});
+
+app.patch('/api/staff/:userId', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    const updates = req.body;
+
+    const db = await getDB();
+
+    // Update user table fields
+    const userFields = ['username', 'email', 'role', 'is_active'];
+    const userUpdates = {};
+    for (const field of userFields) {
+      if (updates[field] !== undefined) {
+        userUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      const setClause = Object.keys(userUpdates).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(userUpdates);
+      values.push(userId);
+      await db.run(`UPDATE users SET ${setClause} WHERE id = ?`, ...values);
+    }
+
+    // Update staff profile fields
+    const profileFields = [
+      'employee_id', 'full_name', 'phone', 'emergency_contact', 'address',
+      'date_of_birth', 'hire_date', 'department', 'position', 'hourly_rate',
+      'monthly_salary', 'employment_type', 'manager_id', 'is_active'
+    ];
+    const profileUpdates = {};
+    for (const field of profileFields) {
+      if (updates[field] !== undefined) {
+        profileUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(profileUpdates).length > 0) {
+      const setClause = Object.keys(profileUpdates).map(key => `${key} = ?`).join(', ');
+      const values = Object.values(profileUpdates);
+      values.push(userId);
+      await db.run(`UPDATE staff_profiles SET ${setClause} WHERE user_id = ?`, ...values);
+    }
+
+    const staff = await db.get(`
+      SELECT sp.*, u.username, u.email, u.role, u.is_active
+      FROM staff_profiles sp
+      JOIN users u ON sp.user_id = u.id
+      WHERE sp.user_id = ?
+    `, userId);
+
+    res.json({ success: true, staff });
+
+  } catch (error) {
+    console.error('❌ Error updating staff member:', error);
+    res.status(500).json({ error: 'Failed to update staff member' });
+  }
+});
+
+// Staff Shifts
+app.get('/api/staff/shifts', authenticateToken, async (req, res) => {
+  try {
+    const { user_id, date, week } = req.query;
+    const db = await getDB();
+
+    let query = `
+      SELECT ss.*, u.full_name as staff_name, creator.full_name as created_by_name
+      FROM staff_shifts ss
+      JOIN users u ON ss.user_id = u.id
+      LEFT JOIN users creator ON ss.created_by = creator.id
+    `;
+    let params = [];
+    let conditions = [];
+
+    if (user_id) {
+      conditions.push('ss.user_id = ?');
+      params.push(parseInt(user_id));
+    }
+
+    if (date) {
+      const startTime = new Date(date + 'T00:00:00Z').getTime();
+      const endTime = startTime + 24 * 60 * 60 * 1000;
+      conditions.push('ss.shift_date >= ? AND ss.shift_date < ?');
+      params.push(startTime, endTime);
+    }
+
+    if (week) {
+      // Calculate week start and end
+      const weekStart = new Date(week);
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+
+      conditions.push('ss.shift_date >= ? AND ss.shift_date <= ?');
+      params.push(weekStart.getTime(), weekEnd.getTime());
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY ss.shift_date, ss.start_time';
+
+    const shifts = await db.all(query, ...params);
+    res.json(shifts);
+
+  } catch (error) {
+    console.error('❌ Error fetching staff shifts:', error);
+    res.status(500).json({ error: 'Failed to fetch staff shifts' });
+  }
+});
+
+app.post('/api/staff/shifts', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const {
+      user_id, shift_date, start_time, end_time,
+      break_duration, shift_type, notes
+    } = req.body;
+
+    const db = await getDB();
+    const result = await db.run(`
+      INSERT INTO staff_shifts (
+        user_id, shift_date, start_time, end_time,
+        break_duration, shift_type, notes, created_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, user_id, shift_date, start_time, end_time,
+       break_duration || 30, shift_type || 'Regular', notes, req.user.id);
+
+    const shift = await db.get(`
+      SELECT ss.*, u.full_name as staff_name
+      FROM staff_shifts ss
+      JOIN users u ON ss.user_id = u.id
+      WHERE ss.id = ?
+    `, result.lastID);
+
+    res.json({ success: true, shift });
+
+  } catch (error) {
+    console.error('❌ Error creating staff shift:', error);
+    res.status(500).json({ error: 'Failed to create staff shift' });
+  }
+});
+
+// Attendance
+app.get('/api/staff/attendance', authenticateToken, async (req, res) => {
+  try {
+    const { user_id, date, month } = req.query;
+    const db = await getDB();
+
+    let query = `
+      SELECT ar.*, u.full_name as staff_name, approver.full_name as approved_by_name
+      FROM attendance_records ar
+      JOIN users u ON ar.user_id = u.id
+      LEFT JOIN users approver ON ar.approved_by = approver.id
+    `;
+    let params = [];
+    let conditions = [];
+
+    if (user_id) {
+      conditions.push('ar.user_id = ?');
+      params.push(parseInt(user_id));
+    }
+
+    if (date) {
+      conditions.push('ar.date = ?');
+      params.push(new Date(date + 'T00:00:00Z').getTime());
+    }
+
+    if (month) {
+      const monthStart = new Date(month + '-01T00:00:00Z');
+      const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+      conditions.push('ar.date >= ? AND ar.date <= ?');
+      params.push(monthStart.getTime(), monthEnd.getTime());
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY ar.date DESC, u.full_name';
+
+    const attendance = await db.all(query, ...params);
+    res.json(attendance);
+
+  } catch (error) {
+    console.error('❌ Error fetching attendance:', error);
+    res.status(500).json({ error: 'Failed to fetch attendance' });
+  }
+});
+
+app.post('/api/staff/attendance/checkin', authenticateToken, async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    const db = await getDB();
+
+    // Check if already checked in today
+    const existing = await db.get(
+      'SELECT * FROM attendance_records WHERE user_id = ? AND date = ?',
+      user_id || req.user.id, todayTimestamp
+    );
+
+    if (existing && existing.check_in_time) {
+      return res.status(400).json({ error: 'Already checked in today' });
+    }
+
+    if (existing) {
+      // Update existing record
+      await db.run(
+        'UPDATE attendance_records SET check_in_time = ? WHERE id = ?',
+        Date.now(), existing.id
+      );
+    } else {
+      // Create new record
+      await db.run(`
+        INSERT INTO attendance_records (user_id, date, check_in_time, status)
+        VALUES (?, ?, ?, 'Present')
+      `, user_id || req.user.id, todayTimestamp, Date.now());
+    }
+
+    const record = await db.get(`
+      SELECT ar.*, u.full_name
+      FROM attendance_records ar
+      JOIN users u ON ar.user_id = u.id
+      WHERE ar.user_id = ? AND ar.date = ?
+    `, user_id || req.user.id, todayTimestamp);
+
+    res.json({ success: true, record });
+
+  } catch (error) {
+    console.error('❌ Error checking in:', error);
+    res.status(500).json({ error: 'Failed to check in' });
+  }
+});
+
+app.post('/api/staff/attendance/checkout', authenticateToken, async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    const db = await getDB();
+
+    const record = await db.get(
+      'SELECT * FROM attendance_records WHERE user_id = ? AND date = ?',
+      user_id || req.user.id, todayTimestamp
+    );
+
+    if (!record || !record.check_in_time) {
+      return res.status(400).json({ error: 'Not checked in today' });
+    }
+
+    if (record.check_out_time) {
+      return res.status(400).json({ error: 'Already checked out today' });
+    }
+
+    const checkOutTime = Date.now();
+    const totalHours = (checkOutTime - record.check_in_time) / (1000 * 60 * 60);
+
+    await db.run(`
+      UPDATE attendance_records
+      SET check_out_time = ?, total_hours = ?
+      WHERE id = ?
+    `, checkOutTime, totalHours, record.id);
+
+    const updatedRecord = await db.get(`
+      SELECT ar.*, u.full_name
+      FROM attendance_records ar
+      JOIN users u ON ar.user_id = u.id
+      WHERE ar.id = ?
+    `, record.id);
+
+    res.json({ success: true, record: updatedRecord });
+
+  } catch (error) {
+    console.error('❌ Error checking out:', error);
+    res.status(500).json({ error: 'Failed to check out' });
+  }
+});
+
+// Leave Requests
+app.get('/api/staff/leave', authenticateToken, async (req, res) => {
+  try {
+    const { user_id, status } = req.query;
+    const db = await getDB();
+
+    let query = `
+      SELECT lr.*, u.full_name as staff_name, approver.full_name as approved_by_name
+      FROM leave_requests lr
+      JOIN users u ON lr.user_id = u.id
+      LEFT JOIN users approver ON lr.approved_by = approver.id
+    `;
+    let params = [];
+    let conditions = [];
+
+    if (user_id) {
+      conditions.push('lr.user_id = ?');
+      params.push(parseInt(user_id));
+    }
+
+    if (status) {
+      conditions.push('lr.status = ?');
+      params.push(status);
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY lr.created_at DESC';
+
+    const leaveRequests = await db.all(query, ...params);
+    res.json(leaveRequests);
+
+  } catch (error) {
+    console.error('❌ Error fetching leave requests:', error);
+    res.status(500).json({ error: 'Failed to fetch leave requests' });
+  }
+});
+
+app.post('/api/staff/leave', authenticateToken, async (req, res) => {
+  try {
+    const {
+      leave_type, start_date, end_date, total_days, reason
+    } = req.body;
+
+    const db = await getDB();
+
+    // Calculate total days if not provided
+    let calculatedDays = total_days;
+    if (!calculatedDays) {
+      const start = new Date(start_date);
+      const end = new Date(end_date);
+      calculatedDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    const result = await db.run(`
+      INSERT INTO leave_requests (
+        user_id, leave_type, start_date, end_date, total_days, reason
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `, req.user.id, leave_type, start_date, end_date, calculatedDays, reason);
+
+    const leaveRequest = await db.get(`
+      SELECT lr.*, u.full_name as staff_name
+      FROM leave_requests lr
+      JOIN users u ON lr.user_id = u.id
+      WHERE lr.id = ?
+    `, result.lastID);
+
+    res.json({ success: true, leaveRequest });
+
+  } catch (error) {
+    console.error('❌ Error creating leave request:', error);
+    res.status(500).json({ error: 'Failed to create leave request' });
+  }
+});
+
+app.patch('/api/staff/leave/:id/approve', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const leaveId = parseInt(req.params.id);
+    const { status, rejection_reason } = req.body;
+
+    const db = await getDB();
+    await db.run(`
+      UPDATE leave_requests
+      SET status = ?, approved_by = ?, approved_at = ?, rejection_reason = ?
+      WHERE id = ?
+    `, status, req.user.id, Date.now(), rejection_reason || null, leaveId);
+
+    const leaveRequest = await db.get(`
+      SELECT lr.*, u.full_name as staff_name, approver.full_name as approved_by_name
+      FROM leave_requests lr
+      JOIN users u ON lr.user_id = u.id
+      LEFT JOIN users approver ON lr.approved_by = approver.id
+      WHERE lr.id = ?
+    `, leaveId);
+
+    res.json({ success: true, leaveRequest });
+
+  } catch (error) {
+    console.error('❌ Error approving leave request:', error);
+    res.status(500).json({ error: 'Failed to approve leave request' });
   }
 });
 
@@ -1134,6 +2379,377 @@ app.post('/api/lights/:id/toggle', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ Error toggling light:', error);
     res.status(500).json({ error: 'Failed to toggle light' });
+  }
+});
+
+// ===== INDIVIDUAL CRUD ENDPOINTS =====
+
+// Staff individual endpoints
+app.get('/api/staff/:id', authenticateToken, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const staff = await db.get(`
+      SELECT u.id as user_id, u.username, u.full_name, u.email, u.role, u.phone, u.created_at, u.updated_at,
+             s.employee_id, s.department, s.position, s.hire_date, s.hourly_rate, s.monthly_salary, s.employment_type
+      FROM users u
+      LEFT JOIN staff_details s ON u.id = s.user_id
+      WHERE u.id = ? AND u.role IN ('employee', 'admin')
+    `, staffId);
+
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    res.json(staff);
+  } catch (error) {
+    console.error('❌ Failed to get staff member:', error);
+    res.status(500).json({ error: 'Failed to get staff member' });
+  }
+});
+
+app.patch('/api/staff/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const updates = req.body;
+    const db = await getDB();
+
+    // Update users table
+    const userFields = ['username', 'full_name', 'email', 'phone', 'role'];
+    const userUpdates = {};
+    for (const field of userFields) {
+      if (updates[field] !== undefined) {
+        userUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(userUpdates).length > 0) {
+      const userSetClause = Object.keys(userUpdates).map(key => `${key} = ?`).join(', ');
+      const userValues = Object.values(userUpdates);
+      userValues.push(staffId);
+
+      await db.run(`UPDATE users SET ${userSetClause} WHERE id = ?`, ...userValues);
+    }
+
+    // Update or insert staff_details table
+    const staffFields = ['employee_id', 'department', 'position', 'hire_date', 'hourly_rate', 'monthly_salary', 'employment_type'];
+    const staffUpdates = {};
+    for (const field of staffFields) {
+      if (updates[field] !== undefined) {
+        staffUpdates[field] = updates[field];
+      }
+    }
+
+    if (Object.keys(staffUpdates).length > 0) {
+      const staffSetClause = Object.keys(staffUpdates).map(key => `${key} = ?`).join(', ');
+      const staffValues = Object.values(staffUpdates);
+      staffValues.push(staffId);
+      await db.run(`
+        INSERT OR REPLACE INTO staff_details (user_id, ${Object.keys(staffUpdates).join(', ')})
+        VALUES (?, ${Object.keys(staffUpdates).map(() => '?').join(', ')})
+      `, staffId, ...staffValues);
+    }
+
+    res.json({ success: true, message: 'Staff member updated successfully' });
+  } catch (error) {
+    console.error('❌ Failed to update staff member:', error);
+    res.status(500).json({ error: 'Failed to update staff member' });
+  }
+});
+
+app.delete('/api/staff/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const staffId = parseInt(req.params.id);
+    const db = await getDB();
+
+    // Check if staff member exists
+    const staff = await db.get('SELECT * FROM users WHERE id = ? AND role IN (\'employee\', \'admin\')', staffId);
+    if (!staff) {
+      return res.status(404).json({ error: 'Staff member not found' });
+    }
+
+    // Delete from staff_details first (due to foreign key)
+    await db.run('DELETE FROM staff_details WHERE user_id = ?', staffId);
+
+    // Delete from users table
+    await db.run('DELETE FROM users WHERE id = ?', staffId);
+
+    res.json({ success: true, message: 'Staff member deleted successfully' });
+  } catch (error) {
+    console.error('❌ Failed to delete staff member:', error);
+    res.status(500).json({ error: 'Failed to delete staff member' });
+  }
+});
+
+// Equipment individual endpoints
+app.get('/api/inventory/equipment/:id', authenticateToken, async (req, res) => {
+  try {
+    const equipmentId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const equipment = await db.get(`
+      SELECT e.*, v.name as supplier_name
+      FROM equipment_inventory e
+      LEFT JOIN vendors v ON e.supplier_id = v.id
+      WHERE e.id = ?
+    `, equipmentId);
+
+    if (!equipment) {
+      return res.status(404).json({ error: 'Equipment not found' });
+    }
+
+    res.json(equipment);
+  } catch (error) {
+    console.error('❌ Failed to get equipment:', error);
+    res.status(500).json({ error: 'Failed to get equipment' });
+  }
+});
+
+app.patch('/api/inventory/equipment/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const equipmentId = parseInt(req.params.id);
+    const updates = req.body;
+    const db = await getDB();
+
+    const allowedFields = [
+      'name', 'category', 'description', 'total_quantity', 'available_quantity',
+      'damaged_quantity', 'maintenance_quantity', 'unit_cost', 'reorder_level',
+      'supplier_id', 'location', 'condition_status', 'last_inventory_check'
+    ];
+
+    const setClause = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => `${field} = ?`).join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => updates[field]);
+    values.push(equipmentId);
+
+    await db.run(`UPDATE equipment_inventory SET ${setClause} WHERE id = ?`, ...values);
+
+    const updatedEquipment = await db.get('SELECT * FROM equipment_inventory WHERE id = ?', equipmentId);
+    res.json({ success: true, equipment: updatedEquipment });
+
+  } catch (error) {
+    console.error('❌ Failed to update equipment:', error);
+    res.status(500).json({ error: 'Failed to update equipment' });
+  }
+});
+
+app.delete('/api/inventory/equipment/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const equipmentId = parseInt(req.params.id);
+    const db = await getDB();
+
+    await db.run('DELETE FROM equipment_inventory WHERE id = ?', equipmentId);
+    res.json({ success: true, message: 'Equipment deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Failed to delete equipment:', error);
+    res.status(500).json({ error: 'Failed to delete equipment' });
+  }
+});
+
+// Consumable individual endpoints
+app.get('/api/inventory/consumables/:id', authenticateToken, async (req, res) => {
+  try {
+    const consumableId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const consumable = await db.get(`
+      SELECT c.*, v.name as supplier_name
+      FROM consumables_inventory c
+      LEFT JOIN vendors v ON c.supplier_id = v.id
+      WHERE c.id = ?
+    `, consumableId);
+
+    if (!consumable) {
+      return res.status(404).json({ error: 'Consumable not found' });
+    }
+
+    res.json(consumable);
+  } catch (error) {
+    console.error('❌ Failed to get consumable:', error);
+    res.status(500).json({ error: 'Failed to get consumable' });
+  }
+});
+
+app.patch('/api/inventory/consumables/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const consumableId = parseInt(req.params.id);
+    const updates = req.body;
+    const db = await getDB();
+
+    const allowedFields = ['name', 'category', 'description', 'current_stock', 'unit_cost', 'reorder_level', 'supplier_id', 'expiry_date', 'storage_location'];
+
+    const setClause = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => `${field} = ?`).join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => updates[field]);
+    values.push(consumableId);
+
+    await db.run(`UPDATE consumables_inventory SET ${setClause} WHERE id = ?`, ...values);
+
+    const updatedConsumable = await db.get('SELECT * FROM consumables_inventory WHERE id = ?', consumableId);
+    res.json({ success: true, consumable: updatedConsumable });
+
+  } catch (error) {
+    console.error('❌ Failed to update consumable:', error);
+    res.status(500).json({ error: 'Failed to update consumable' });
+  }
+});
+
+app.delete('/api/inventory/consumables/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const consumableId = parseInt(req.params.id);
+    const db = await getDB();
+
+    await db.run('DELETE FROM consumables_inventory WHERE id = ?', consumableId);
+    res.json({ success: true, message: 'Consumable deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Failed to delete consumable:', error);
+    res.status(500).json({ error: 'Failed to delete consumable' });
+  }
+});
+
+// Vendor individual endpoints
+app.get('/api/vendors/:id', authenticateToken, async (req, res) => {
+  try {
+    const vendorId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const vendor = await db.get('SELECT * FROM vendors WHERE id = ?', vendorId);
+
+    if (!vendor) {
+      return res.status(404).json({ error: 'Vendor not found' });
+    }
+
+    res.json(vendor);
+  } catch (error) {
+    console.error('❌ Failed to get vendor:', error);
+    res.status(500).json({ error: 'Failed to get vendor' });
+  }
+});
+
+app.patch('/api/vendors/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const vendorId = parseInt(req.params.id);
+    const updates = req.body;
+    const db = await getDB();
+
+    const allowedFields = ['name', 'contact_person', 'phone', 'email', 'address', 'payment_terms', 'rating', 'is_active'];
+
+    const setClause = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => `${field} = ?`).join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => updates[field]);
+    values.push(vendorId);
+
+    await db.run(`UPDATE vendors SET ${setClause} WHERE id = ?`, ...values);
+
+    const updatedVendor = await db.get('SELECT * FROM vendors WHERE id = ?', vendorId);
+    res.json({ success: true, vendor: updatedVendor });
+
+  } catch (error) {
+    console.error('❌ Failed to update vendor:', error);
+    res.status(500).json({ error: 'Failed to update vendor' });
+  }
+});
+
+app.delete('/api/vendors/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const vendorId = parseInt(req.params.id);
+    const db = await getDB();
+
+    await db.run('DELETE FROM vendors WHERE id = ?', vendorId);
+    res.json({ success: true, message: 'Vendor deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Failed to delete vendor:', error);
+    res.status(500).json({ error: 'Failed to delete vendor' });
+  }
+});
+
+// Shift individual endpoints
+app.get('/api/staff/shifts/:id', authenticateToken, async (req, res) => {
+  try {
+    const shiftId = parseInt(req.params.id);
+    const db = await getDB();
+
+    const shift = await db.get(`
+      SELECT s.*, u.full_name as staff_name
+      FROM staff_shifts s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.id = ?
+    `, shiftId);
+
+    if (!shift) {
+      return res.status(404).json({ error: 'Shift not found' });
+    }
+
+    res.json(shift);
+  } catch (error) {
+    console.error('❌ Failed to get shift:', error);
+    res.status(500).json({ error: 'Failed to get shift' });
+  }
+});
+
+app.patch('/api/staff/shifts/:id', authenticateToken, async (req, res) => {
+  try {
+    const shiftId = parseInt(req.params.id);
+    const updates = req.body;
+    const db = await getDB();
+
+    const allowedFields = ['user_id', 'shift_date', 'start_time', 'end_time', 'break_duration', 'shift_type', 'notes'];
+
+    const setClause = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => `${field} = ?`).join(', ');
+
+    if (!setClause) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    const values = allowedFields.filter(field => updates[field] !== undefined)
+      .map(field => updates[field]);
+    values.push(shiftId);
+
+    await db.run(`UPDATE staff_shifts SET ${setClause} WHERE id = ?`, ...values);
+
+    const updatedShift = await db.get('SELECT * FROM staff_shifts WHERE id = ?', shiftId);
+    res.json({ success: true, shift: updatedShift });
+
+  } catch (error) {
+    console.error('❌ Failed to update shift:', error);
+    res.status(500).json({ error: 'Failed to update shift' });
+  }
+});
+
+app.delete('/api/staff/shifts/:id', authenticateToken, async (req, res) => {
+  try {
+    const shiftId = parseInt(req.params.id);
+    const db = await getDB();
+
+    await db.run('DELETE FROM staff_shifts WHERE id = ?', shiftId);
+    res.json({ success: true, message: 'Shift deleted successfully' });
+
+  } catch (error) {
+    console.error('❌ Failed to delete shift:', error);
+    res.status(500).json({ error: 'Failed to delete shift' });
   }
 });
 

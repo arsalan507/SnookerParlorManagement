@@ -8,7 +8,8 @@ const STATIC_FILES = [
   '/index.html',
   '/app.js',
   '/styles.css',
-  '/manifest.webmanifest'
+  '/manifest.webmanifest',
+  '/favicon.ico'
 ];
 
 // API endpoints to cache

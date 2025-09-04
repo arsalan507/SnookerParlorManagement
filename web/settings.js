@@ -137,6 +137,19 @@ class SettingsManager {
             
             if (response.ok) {
                 this.showMessage('generalMessage', 'General settings saved successfully', 'success');
+                // Update local storage with new parlor name for immediate reflection
+                const parlorName = settings.parlor_name;
+                const oldName = localStorage.getItem('parlor_name');
+                localStorage.setItem('parlor_name', parlorName);
+
+                // Trigger storage event for other tabs/windows
+                const storageEvent = new StorageEvent('storage', {
+                    key: 'parlor_name',
+                    newValue: parlorName,
+                    oldValue: oldName,
+                    storageArea: localStorage
+                });
+                window.dispatchEvent(storageEvent);
             } else {
                 const error = await response.json();
                 this.showMessage('generalMessage', error.error || 'Failed to save settings', 'error');
@@ -205,10 +218,98 @@ class SettingsManager {
     }
     
     openEditModal(id, type, hourlyRate) {
-        document.getElementById('editTableId').value = id;
-        document.getElementById('editTableType').value = type;
-        document.getElementById('editHourlyRate').value = hourlyRate;
-        document.getElementById('editTableModal').classList.remove('hidden');
+        console.log('🎯 openEditModal called with:', { id, type, hourlyRate });
+
+        // Get modal element
+        const modal = document.getElementById('editTableModal');
+        if (!modal) {
+            console.error('❌ Edit table modal not found!');
+            alert('Modal element not found!');
+            return;
+        }
+
+        console.log('✅ Modal element found');
+
+        // Populate form fields
+        const tableIdField = document.getElementById('editTableId');
+        const tableTypeField = document.getElementById('editTableType');
+        const hourlyRateField = document.getElementById('editHourlyRate');
+
+        if (tableIdField) {
+            tableIdField.value = id;
+            console.log('Set table ID to:', id);
+        }
+        if (tableTypeField) {
+            tableTypeField.value = type;
+            console.log('Set table type to:', type);
+        }
+        if (hourlyRateField) {
+            hourlyRateField.value = hourlyRate;
+            console.log('Set hourly rate to:', hourlyRate);
+        }
+
+        // Force show modal with aggressive styling
+        modal.classList.remove('hidden');
+        modal.style.cssText = `
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background-color: rgba(0, 0, 0, 0.9) !important;
+            z-index: 999999 !important;
+            align-items: center !important;
+            justify-content: center !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        `;
+
+        // Ensure modal content is visible
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.cssText = `
+                display: block !important;
+                background-color: #1a1a2e !important;
+                border: 2px solid #00ff88 !important;
+                border-radius: 15px !important;
+                padding: 2rem !important;
+                max-width: 400px !important;
+                width: 90% !important;
+                z-index: 1000000 !important;
+                position: relative !important;
+                color: white !important;
+            `;
+            console.log('✅ Modal content styled');
+        }
+
+        // Prevent body scrolling
+        document.body.style.overflow = 'hidden';
+
+        console.log('🎉 Modal should now be visible!');
+        console.log('Modal display:', window.getComputedStyle(modal).display);
+        console.log('Modal z-index:', window.getComputedStyle(modal).zIndex);
+
+        // Add a visual confirmation
+        const confirmDiv = document.createElement('div');
+        confirmDiv.textContent = 'MODAL OPENED!';
+        confirmDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: green;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000001;
+            font-weight: bold;
+        `;
+        document.body.appendChild(confirmDiv);
+        setTimeout(() => {
+            if (confirmDiv.parentNode) {
+                confirmDiv.parentNode.removeChild(confirmDiv);
+            }
+        }, 2000);
     }
     
     async editTable(e) {
@@ -265,7 +366,13 @@ class SettingsManager {
     }
     
     closeEditModal() {
-        document.getElementById('editTableModal').classList.add('hidden');
+        const modal = document.getElementById('editTableModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+            // Reset body scroll
+            document.body.style.overflow = '';
+        }
     }
     
     async createBackup() {
@@ -287,12 +394,20 @@ class SettingsManager {
         }
     }
     
+    updateDashboardHeader(parlorName) {
+        // This method will be called from the main dashboard
+        const headerElement = document.querySelector('.topbar-left h1');
+        if (headerElement) {
+            headerElement.innerHTML = `🎱 ${parlorName}`;
+        }
+    }
+
     showMessage(elementId, message, type) {
         const element = document.getElementById(elementId);
         element.className = type === 'success' ? 'success-message' : 'error-message';
         element.textContent = message;
         element.style.display = 'block';
-        
+
         // Hide message after 5 seconds
         setTimeout(() => {
             element.style.display = 'none';
@@ -302,8 +417,15 @@ class SettingsManager {
 
 // Global functions for modal
 function closeEditModal() {
-    document.getElementById('editTableModal').classList.add('hidden');
+    const modal = document.getElementById('editTableModal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+        // Reset body scroll
+        document.body.style.overflow = '';
+    }
 }
+
 
 // Initialize settings manager
 let settingsManager;

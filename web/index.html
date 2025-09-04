@@ -8,7 +8,7 @@
   <!-- PWA Meta -->
   <link rel="manifest" href="/manifest.webmanifest">
   <meta name="theme-color" content="#1a1a1a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="apple-touch-icon" href="/icon-192.png">
   
@@ -58,8 +58,20 @@
       </div>
       
       <div class="topbar-controls">
+        <button class="btn btn-icon" id="dashboard-btn" title="Dashboard" style="display: none;">
+          <span class="icon">🏠</span>
+        </button>
         <button class="btn btn-icon" id="refresh-btn" title="Refresh Data">
           <span class="icon">🔄</span>
+        </button>
+        <button class="btn btn-icon" id="inventory-btn" title="Inventory">
+          <span class="icon">📦</span>
+        </button>
+        <button class="btn btn-icon" id="staff-btn" title="Staff">
+          <span class="icon">👥</span>
+        </button>
+        <button class="btn btn-icon" id="membership-btn" title="Membership">
+          <span class="icon">👑</span>
         </button>
         <button class="btn btn-icon" id="reports-btn" title="Reports">
           <span class="icon">📊</span>
@@ -97,7 +109,7 @@
     <main class="main-content">
       
       <!-- Tables Grid -->
-      <section class="tables-section">
+      <section class="tables-section" id="tables-section">
         <div id="tables-grid" class="tables-grid">
           <!-- Table cards will be dynamically generated -->
         </div>
@@ -112,7 +124,7 @@
       </section>
 
       <!-- Sessions History -->
-      <section class="history-section">
+      <section class="history-section" id="history-section">
         <div class="section-header">
           <h2>📋 Today's Sessions</h2>
           <div class="section-controls">
@@ -150,6 +162,442 @@
         </div>
       </section>
 
+      <!-- Inventory Management Section -->
+      <section class="inventory-section" id="inventory-section" style="display: none;">
+        <div class="section-header">
+          <h2>📦 Inventory Management</h2>
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-equipment-btn">➕ Add Equipment</button>
+            <button class="btn btn-secondary" id="add-consumable-btn">➕ Add Consumable</button>
+            <button class="btn btn-outline" id="manage-vendors-btn">🏢 Vendors</button>
+          </div>
+        </div>
+
+        <!-- Inventory Tabs -->
+        <div class="inventory-tabs">
+          <button class="tab-btn active" data-tab="equipment">Equipment</button>
+          <button class="tab-btn" data-tab="consumables">Consumables</button>
+          <button class="tab-btn" data-tab="transactions">Transactions</button>
+        </div>
+
+        <!-- Equipment Inventory -->
+        <div id="equipment-tab" class="tab-pane active">
+          <div class="inventory-filters">
+            <select id="equipment-category-filter" class="form-control">
+              <option value="">All Categories</option>
+              <option value="CUE">Cues</option>
+              <option value="BALLS">Balls</option>
+              <option value="CHALK">Chalk</option>
+              <option value="CLOTH">Cloth</option>
+              <option value="LIGHTS">Lights</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="low-stock-filter">
+              <span class="checkmark"></span>
+              Low Stock Only
+            </label>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="equipment-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Total</th>
+                  <th>Available</th>
+                  <th>Damaged</th>
+                  <th>Maintenance</th>
+                  <th>Cost (₹)</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="equipment-tbody">
+                <!-- Equipment items will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Consumables Inventory -->
+        <div id="consumables-tab" class="tab-pane">
+          <div class="inventory-filters">
+            <select id="consumables-category-filter" class="form-control">
+              <option value="">All Categories</option>
+              <option value="FOOD">Food</option>
+              <option value="BEVERAGE">Beverage</option>
+              <option value="CLEANING">Cleaning</option>
+              <option value="MAINTENANCE">Maintenance</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="consumables-low-stock-filter">
+              <span class="checkmark"></span>
+              Low Stock Only
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="expiring-soon-filter">
+              <span class="checkmark"></span>
+              Expiring Soon
+            </label>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="consumables-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Category</th>
+                  <th>Current Stock</th>
+                  <th>Cost (₹)</th>
+                  <th>Expiry Date</th>
+                  <th>Supplier</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="consumables-tbody">
+                <!-- Consumables items will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Inventory Transactions -->
+        <div id="transactions-tab" class="tab-pane">
+          <div class="table-container">
+            <table class="inventory-table" id="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Item</th>
+                  <th>Type</th>
+                  <th>Transaction</th>
+                  <th>Quantity</th>
+                  <th>Previous Stock</th>
+                  <th>New Stock</th>
+                  <th>Performed By</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-tbody">
+                <!-- Transactions will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Staff Management Section -->
+      <section class="staff-section" id="staff-section" style="display: none;">
+        <div class="section-header">
+          <h2>👥 Staff Management</h2>
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-staff-btn">➕ Add Staff</button>
+            <button class="btn btn-secondary" id="manage-shifts-btn">📅 Shifts</button>
+            <button class="btn btn-outline" id="attendance-btn">⏰ Attendance</button>
+            <button class="btn btn-outline" id="leave-btn">🏖️ Leave</button>
+          </div>
+        </div>
+
+        <!-- Staff Tabs -->
+        <div class="staff-tabs">
+          <button class="tab-btn active" data-tab="staff-list">Staff List</button>
+          <button class="tab-btn" data-tab="shifts">Shifts</button>
+          <button class="tab-btn" data-tab="attendance">Attendance</button>
+          <button class="tab-btn" data-tab="leave">Leave Requests</button>
+        </div>
+
+        <!-- Staff List -->
+        <div id="staff-list-tab" class="tab-pane active">
+          <div class="staff-filters">
+            <select id="staff-department-filter" class="form-control">
+              <option value="">All Departments</option>
+              <option value="Operations">Operations</option>
+              <option value="Management">Management</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Other">Other</option>
+            </select>
+            <select id="staff-role-filter" class="form-control">
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="employee">Employee</option>
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="active-staff-filter" checked>
+              <span class="checkmark"></span>
+              Active Only
+            </label>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="staff-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Employee ID</th>
+                  <th>Department</th>
+                  <th>Position</th>
+                  <th>Role</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="staff-tbody">
+                <!-- Staff members will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Shifts Management -->
+        <div id="shifts-tab" class="tab-pane">
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-shift-btn">➕ Add Shift</button>
+          </div>
+          <div class="staff-filters">
+            <select id="shift-staff-filter" class="form-control">
+              <option value="">All Staff</option>
+            </select>
+            <input type="date" id="shift-date-filter" class="form-control">
+            <label class="checkbox-label">
+              <input type="checkbox" id="upcoming-shifts-filter">
+              <span class="checkmark"></span>
+              Upcoming Only
+            </label>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="shifts-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Date</th>
+                  <th>Start Time</th>
+                  <th>End Time</th>
+                  <th>Break (min)</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="shifts-tbody">
+                <!-- Shifts will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Attendance Tracking -->
+        <div id="attendance-tab" class="tab-pane">
+          <div class="attendance-controls">
+            <div class="attendance-actions">
+              <button class="btn btn-success" id="checkin-btn">🟢 Check In</button>
+              <button class="btn btn-danger" id="checkout-btn">🔴 Check Out</button>
+            </div>
+            <div class="attendance-filters">
+              <select id="attendance-staff-filter" class="form-control">
+                <option value="">All Staff</option>
+              </select>
+              <input type="date" id="attendance-date-filter" class="form-control">
+              <button class="btn btn-outline" id="filter-attendance-btn">Filter</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="attendance-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Date</th>
+                  <th>Check In</th>
+                  <th>Check Out</th>
+                  <th>Total Hours</th>
+                  <th>Status</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+              <tbody id="attendance-tbody">
+                <!-- Attendance records will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Leave Requests -->
+        <div id="leave-tab" class="tab-pane">
+          <div class="section-controls">
+            <button class="btn btn-primary" id="request-leave-btn">➕ Request Leave</button>
+          </div>
+          <div class="staff-filters">
+            <select id="leave-status-filter" class="form-control">
+              <option value="">All Status</option>
+              <option value="Pending">Pending</option>
+              <option value="Approved">Approved</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+            <select id="leave-type-filter" class="form-control">
+              <option value="">All Types</option>
+              <option value="Sick">Sick Leave</option>
+              <option value="Vacation">Vacation</option>
+              <option value="Personal">Personal Leave</option>
+              <option value="Maternity">Maternity Leave</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="leave-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Leave Type</th>
+                  <th>Start Date</th>
+                  <th>End Date</th>
+                  <th>Days</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leave-tbody">
+                <!-- Leave requests will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Membership Management Section -->
+      <section class="membership-section" id="membership-section" style="display: none;">
+        <div class="section-header">
+          <h2>👑 Membership Management</h2>
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-member-btn">➕ Add Member</button>
+            <button class="btn btn-secondary" id="manage-tiers-btn">🏷️ Manage Tiers</button>
+            <button class="btn btn-outline" id="loyalty-program-btn">🎁 Loyalty Program</button>
+          </div>
+        </div>
+
+        <!-- Membership Tabs -->
+        <div class="membership-tabs">
+          <button class="tab-btn active" data-tab="members">Members</button>
+          <button class="tab-btn" data-tab="tiers">Membership Tiers</button>
+          <button class="tab-btn" data-tab="loyalty">Loyalty Points</button>
+          <button class="tab-btn" data-tab="analytics">Analytics</button>
+        </div>
+
+        <!-- Members List -->
+        <div id="members-tab" class="tab-pane active">
+          <div class="membership-filters">
+            <select id="member-tier-filter" class="form-control">
+              <option value="">All Tiers</option>
+              <option value="REGULAR">Regular</option>
+              <option value="VIP">VIP</option>
+              <option value="PREMIUM">Premium</option>
+            </select>
+            <select id="member-status-filter" class="form-control">
+              <option value="">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+            <label class="checkbox-label">
+              <input type="checkbox" id="loyalty-members-filter">
+              <span class="checkmark"></span>
+              Has Loyalty Points
+            </label>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="members-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Phone</th>
+                  <th>Tier</th>
+                  <th>Status</th>
+                  <th>Loyalty Points</th>
+                  <th>Total Spent</th>
+                  <th>Join Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="members-tbody">
+                <!-- Members will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Membership Tiers -->
+        <div id="tiers-tab" class="tab-pane">
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-tier-btn">➕ Add Tier</button>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="tiers-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Monthly Fee</th>
+                  <th>Annual Fee</th>
+                  <th>Session Discount</th>
+                  <th>Consumable Discount</th>
+                  <th>Free Sessions</th>
+                  <th>Points Multiplier</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="tiers-tbody">
+                <!-- Tiers will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Loyalty Points -->
+        <div id="loyalty-tab" class="tab-pane">
+          <div class="loyalty-controls">
+            <div class="loyalty-actions">
+              <button class="btn btn-success" id="earn-points-btn">➕ Earn Points</button>
+              <button class="btn btn-danger" id="redeem-points-btn">🎁 Redeem Points</button>
+            </div>
+            <div class="loyalty-filters">
+              <select id="loyalty-member-filter" class="form-control">
+                <option value="">All Members</option>
+              </select>
+              <input type="date" id="loyalty-date-filter" class="form-control">
+              <button class="btn btn-outline" id="filter-loyalty-btn">Filter</button>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="loyalty-table">
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Transaction Type</th>
+                  <th>Points</th>
+                  <th>Balance</th>
+                  <th>Description</th>
+                  <th>Date</th>
+                  <th>Performed By</th>
+                </tr>
+              </thead>
+              <tbody id="loyalty-tbody">
+                <!-- Loyalty transactions will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Member Analytics -->
+        <div id="analytics-tab" class="tab-pane">
+          <div class="analytics-controls">
+            <select id="analytics-member-filter" class="form-control">
+              <option value="">Select Member</option>
+            </select>
+            <button class="btn btn-primary" id="generate-analytics-btn">📊 Generate Report</button>
+          </div>
+          <div id="analytics-content" class="analytics-content">
+            <!-- Analytics will be displayed here -->
+          </div>
+        </div>
+      </section>
+
     </main>
 
     <!-- Modals -->
@@ -171,7 +619,10 @@
           
           <div class="form-group">
             <label for="customer-name">Customer Name</label>
-            <input type="text" id="customer-name" class="form-control" placeholder="Enter customer name">
+            <div class="autocomplete-container">
+              <input type="text" id="customer-name" class="form-control" placeholder="Enter customer name" autocomplete="off">
+              <div id="customer-suggestions" class="autocomplete-suggestions"></div>
+            </div>
           </div>
           
           <div class="form-group">
@@ -293,6 +744,1072 @@
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
 
+    <!-- Inventory Modals -->
+
+    <!-- Add Equipment Modal -->
+    <div id="add-equipment-modal" class="modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h3>➕ Add Equipment</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <form id="add-equipment-form" class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="equipment-name">Name *</label>
+              <input type="text" id="equipment-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="equipment-category">Category *</label>
+              <select id="equipment-category" class="form-control" required>
+                <option value="">Select Category</option>
+                <option value="CUE">Cue</option>
+                <option value="BALLS">Balls</option>
+                <option value="CHALK">Chalk</option>
+                <option value="CLOTH">Cloth</option>
+                <option value="LIGHTS">Lights</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="equipment-description">Description</label>
+            <textarea id="equipment-description" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="equipment-quantity">Quantity *</label>
+              <input type="number" id="equipment-quantity" class="form-control" min="1" required>
+            </div>
+            <div class="form-group">
+              <label for="equipment-cost">Unit Cost (₹) *</label>
+              <input type="number" id="equipment-cost" class="form-control" min="0" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="equipment-reorder-level">Reorder Level</label>
+              <input type="number" id="equipment-reorder-level" class="form-control" min="0" value="5">
+            </div>
+            <div class="form-group">
+              <label for="equipment-location">Location</label>
+              <input type="text" id="equipment-location" class="form-control" value="Main Storage">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="equipment-supplier">Supplier</label>
+              <select id="equipment-supplier" class="form-control">
+                <option value="">Select Supplier</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="equipment-condition">Condition</label>
+              <select id="equipment-condition" class="form-control">
+                <option value="EXCELLENT">Excellent</option>
+                <option value="GOOD" selected>Good</option>
+                <option value="FAIR">Fair</option>
+                <option value="POOR">Poor</option>
+                <option value="DAMAGED">Damaged</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">➕ Add Equipment</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add Consumable Modal -->
+    <div id="add-consumable-modal" class="modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h3>➕ Add Consumable</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <form id="add-consumable-form" class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="consumable-name">Name *</label>
+              <input type="text" id="consumable-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="consumable-category">Category *</label>
+              <select id="consumable-category" class="form-control" required>
+                <option value="">Select Category</option>
+                <option value="FOOD">Food</option>
+                <option value="BEVERAGE">Beverage</option>
+                <option value="CLEANING">Cleaning</option>
+                <option value="MAINTENANCE">Maintenance</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="consumable-description">Description</label>
+            <textarea id="consumable-description" class="form-control" rows="2"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="consumable-stock">Current Stock *</label>
+              <input type="number" id="consumable-stock" class="form-control" min="0" required>
+            </div>
+            <div class="form-group">
+              <label for="consumable-cost">Unit Cost (₹) *</label>
+              <input type="number" id="consumable-cost" class="form-control" min="0" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="consumable-reorder-level">Reorder Level</label>
+              <input type="number" id="consumable-reorder-level" class="form-control" min="0" value="10">
+            </div>
+            <div class="form-group">
+              <label for="consumable-expiry">Expiry Date</label>
+              <input type="date" id="consumable-expiry" class="form-control">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="consumable-supplier">Supplier</label>
+              <select id="consumable-supplier" class="form-control">
+                <option value="">Select Supplier</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="consumable-location">Storage Location</label>
+              <input type="text" id="consumable-location" class="form-control" value="Pantry">
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">➕ Add Consumable</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Vendors Modal -->
+    <div id="vendors-modal" class="modal">
+      <div class="modal-content modal-wide">
+        <div class="modal-header">
+          <h3>🏢 Vendor Management</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="section-controls">
+            <button class="btn btn-primary" id="add-vendor-btn">➕ Add Vendor</button>
+          </div>
+          <div class="table-container">
+            <table class="inventory-table" id="vendors-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Contact Person</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Rating</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="vendors-tbody">
+                <!-- Vendors will be loaded here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Vendor Modal -->
+    <div id="add-vendor-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>➕ Add Vendor</h3>
+          <button class="btn btn-icon modal-close">&times;</button>
+        </div>
+        <form id="add-vendor-form" class="modal-body">
+          <div class="form-group">
+            <label for="vendor-name">Company Name *</label>
+            <input type="text" id="vendor-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="vendor-contact">Contact Person</label>
+            <input type="text" id="vendor-contact" class="form-control">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="vendor-phone">Phone</label>
+              <input type="tel" id="vendor-phone" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="vendor-email">Email</label>
+              <input type="email" id="vendor-email" class="form-control">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="vendor-address">Address</label>
+            <textarea id="vendor-address" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="vendor-payment-terms">Payment Terms</label>
+              <input type="text" id="vendor-payment-terms" class="form-control" value="Net 30">
+            </div>
+            <div class="form-group">
+              <label for="vendor-rating">Rating</label>
+              <select id="vendor-rating" class="form-control">
+                <option value="5" selected>⭐⭐⭐⭐⭐ (5)</option>
+                <option value="4">⭐⭐⭐⭐ (4)</option>
+                <option value="3">⭐⭐⭐ (3)</option>
+                <option value="2">⭐⭐ (2)</option>
+                <option value="1">⭐ (1)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+            <button type="submit" class="btn btn-primary">➕ Add Vendor</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Membership Management Modals -->
+
+  <!-- Add Member Modal -->
+  <div id="add-member-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>➕ Add Member</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="add-member-form" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="member-name">Full Name *</label>
+            <input type="text" id="member-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="member-phone">Phone Number *</label>
+            <input type="tel" id="member-phone" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="member-email">Email</label>
+            <input type="email" id="member-email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="member-dob">Date of Birth</label>
+            <input type="date" id="member-dob" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="member-address">Address</label>
+          <textarea id="member-address" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="member-tier">Membership Tier *</label>
+            <select id="member-tier" class="form-control" required>
+              <option value="">Select Tier</option>
+              <option value="REGULAR">Regular</option>
+              <option value="VIP">VIP</option>
+              <option value="PREMIUM">Premium</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="member-start-date">Start Date *</label>
+            <input type="date" id="member-start-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="member-expiry-date">Expiry Date</label>
+            <input type="date" id="member-expiry-date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="member-emergency-contact">Emergency Contact</label>
+            <input type="tel" id="member-emergency-contact" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="member-notes">Notes</label>
+          <textarea id="member-notes" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">➕ Add Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Member Modal -->
+  <div id="edit-member-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>✏️ Edit Member</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-member-form" class="modal-body">
+        <input type="hidden" id="edit-member-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-member-name">Full Name *</label>
+            <input type="text" id="edit-member-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-member-phone">Phone Number *</label>
+            <input type="tel" id="edit-member-phone" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-member-email">Email</label>
+            <input type="email" id="edit-member-email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-member-dob">Date of Birth</label>
+            <input type="date" id="edit-member-dob" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-member-address">Address</label>
+          <textarea id="edit-member-address" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-member-tier">Membership Tier *</label>
+            <select id="edit-member-tier" class="form-control" required>
+              <option value="REGULAR">Regular</option>
+              <option value="VIP">VIP</option>
+              <option value="PREMIUM">Premium</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-member-status">Status</label>
+            <select id="edit-member-status" class="form-control">
+              <option value="ACTIVE">Active</option>
+              <option value="EXPIRED">Expired</option>
+              <option value="SUSPENDED">Suspended</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-member-start-date">Start Date</label>
+            <input type="date" id="edit-member-start-date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-member-expiry-date">Expiry Date</label>
+            <input type="date" id="edit-member-expiry-date" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-member-emergency-contact">Emergency Contact</label>
+            <input type="tel" id="edit-member-emergency-contact" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-member-loyalty-points">Loyalty Points</label>
+            <input type="number" id="edit-member-loyalty-points" class="form-control" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-member-notes">Notes</label>
+          <textarea id="edit-member-notes" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Tier Modal -->
+  <div id="add-tier-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>➕ Add Membership Tier</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="add-tier-form" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tier-name">Tier Name *</label>
+            <input type="text" id="tier-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="tier-description">Description</label>
+            <textarea id="tier-description" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tier-monthly-fee">Monthly Fee (₹)</label>
+            <input type="number" id="tier-monthly-fee" class="form-control" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="tier-annual-fee">Annual Fee (₹)</label>
+            <input type="number" id="tier-annual-fee" class="form-control" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tier-session-discount">Session Discount (%)</label>
+            <input type="number" id="tier-session-discount" class="form-control" min="0" max="100">
+          </div>
+          <div class="form-group">
+            <label for="tier-consumable-discount">Consumable Discount (%)</label>
+            <input type="number" id="tier-consumable-discount" class="form-control" min="0" max="100">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tier-free-sessions">Free Sessions/Month</label>
+            <input type="number" id="tier-free-sessions" class="form-control" min="0">
+          </div>
+          <div class="form-group">
+            <label for="tier-points-multiplier">Points Multiplier</label>
+            <input type="number" id="tier-points-multiplier" class="form-control" min="0" step="0.1" value="1.0">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tier-min-spending">Min. Spending (₹)</label>
+            <input type="number" id="tier-min-spending" class="form-control" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="tier-priority-booking">Priority Booking</label>
+            <select id="tier-priority-booking" class="form-control">
+              <option value="0">No</option>
+              <option value="1">Yes</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">➕ Add Tier</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Earn Points Modal -->
+  <div id="earn-points-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Earn Loyalty Points</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="earn-points-form" class="modal-body">
+        <div class="form-group">
+          <label for="earn-member">Member *</label>
+          <select id="earn-member" class="form-control" required>
+            <option value="">Select Member</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="earn-points">Points to Earn *</label>
+            <input type="number" id="earn-points" class="form-control" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="earn-reference-type">Reference Type</label>
+            <select id="earn-reference-type" class="form-control">
+              <option value="MANUAL">Manual</option>
+              <option value="SESSION">Session</option>
+              <option value="PURCHASE">Purchase</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="earn-description">Description *</label>
+          <textarea id="earn-description" class="form-control" rows="2" required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">➕ Earn Points</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Redeem Points Modal -->
+  <div id="redeem-points-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎁 Redeem Loyalty Points</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="redeem-points-form" class="modal-body">
+        <div class="form-group">
+          <label for="redeem-member">Member *</label>
+          <select id="redeem-member" class="form-control" required>
+            <option value="">Select Member</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="redeem-points">Points to Redeem *</label>
+            <input type="number" id="redeem-points" class="form-control" min="1" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="redeem-description">Description *</label>
+          <textarea id="redeem-description" class="form-control" rows="2" required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">🎁 Redeem Points</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Staff Management Modals -->
+
+  <!-- Add Staff Modal -->
+  <div id="add-staff-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>➕ Add Staff Member</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="add-staff-form" class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-username">Username *</label>
+            <input type="text" id="staff-username" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="staff-password">Password *</label>
+            <input type="password" id="staff-password" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-full-name">Full Name *</label>
+            <input type="text" id="staff-full-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="staff-email">Email</label>
+            <input type="email" id="staff-email" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-employee-id">Employee ID</label>
+            <input type="text" id="staff-employee-id" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="staff-role">Role</label>
+            <select id="staff-role" class="form-control">
+              <option value="employee">Employee</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-department">Department</label>
+            <select id="staff-department" class="form-control">
+              <option value="Operations">Operations</option>
+              <option value="Management">Management</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="staff-position">Position *</label>
+            <input type="text" id="staff-position" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-phone">Phone</label>
+            <input type="tel" id="staff-phone" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="staff-hire-date">Hire Date *</label>
+            <input type="date" id="staff-hire-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-hourly-rate">Hourly Rate (₹)</label>
+            <input type="number" id="staff-hourly-rate" class="form-control" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="staff-monthly-salary">Monthly Salary (₹)</label>
+            <input type="number" id="staff-monthly-salary" class="form-control" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="staff-employment-type">Employment Type</label>
+            <select id="staff-employment-type" class="form-control">
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="staff-manager">Manager</label>
+            <select id="staff-manager" class="form-control">
+              <option value="">Select Manager</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">➕ Add Staff Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Shift Modal -->
+  <div id="add-shift-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>➕ Add Shift</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="add-shift-form" class="modal-body">
+        <div class="form-group">
+          <label for="shift-staff">Staff Member *</label>
+          <select id="shift-staff" class="form-control" required>
+            <option value="">Select Staff Member</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shift-date">Date *</label>
+            <input type="date" id="shift-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="shift-type">Shift Type</label>
+            <select id="shift-type" class="form-control">
+              <option value="Regular">Regular</option>
+              <option value="Overtime">Overtime</option>
+              <option value="Holiday">Holiday</option>
+              <option value="Training">Training</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shift-start">Start Time *</label>
+            <input type="time" id="shift-start" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="shift-end">End Time *</label>
+            <input type="time" id="shift-end" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="shift-break">Break Duration (minutes)</label>
+            <input type="number" id="shift-break" class="form-control" min="0" value="30">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="shift-notes">Notes</label>
+          <textarea id="shift-notes" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">➕ Add Shift</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Request Leave Modal -->
+  <div id="request-leave-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🏖️ Request Leave</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="request-leave-form" class="modal-body">
+        <div class="form-group">
+          <label for="leave-type">Leave Type *</label>
+          <select id="leave-type" class="form-control" required>
+            <option value="">Select Leave Type</option>
+            <option value="Sick">Sick Leave</option>
+            <option value="Vacation">Vacation</option>
+            <option value="Personal">Personal Leave</option>
+            <option value="Maternity">Maternity Leave</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="leave-start">Start Date *</label>
+            <input type="date" id="leave-start" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="leave-end">End Date *</label>
+            <input type="date" id="leave-end" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="leave-reason">Reason *</label>
+          <textarea id="leave-reason" class="form-control" rows="3" required></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">📤 Submit Request</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Staff Modal -->
+  <div id="edit-staff-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>✏️ Edit Staff Member</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-staff-form" class="modal-body">
+        <input type="hidden" id="edit-staff-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-username">Username *</label>
+            <input type="text" id="edit-staff-username" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-full-name">Full Name *</label>
+            <input type="text" id="edit-staff-full-name" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-email">Email</label>
+            <input type="email" id="edit-staff-email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-employee-id">Employee ID</label>
+            <input type="text" id="edit-staff-employee-id" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-role">Role</label>
+            <select id="edit-staff-role" class="form-control">
+              <option value="employee">Employee</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-department">Department</label>
+            <select id="edit-staff-department" class="form-control">
+              <option value="Operations">Operations</option>
+              <option value="Management">Management</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-position">Position *</label>
+            <input type="text" id="edit-staff-position" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-phone">Phone</label>
+            <input type="tel" id="edit-staff-phone" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-hire-date">Hire Date *</label>
+            <input type="date" id="edit-staff-hire-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-employment-type">Employment Type</label>
+            <select id="edit-staff-employment-type" class="form-control">
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-staff-hourly-rate">Hourly Rate (₹)</label>
+            <input type="number" id="edit-staff-hourly-rate" class="form-control" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label for="edit-staff-monthly-salary">Monthly Salary (₹)</label>
+            <input type="number" id="edit-staff-monthly-salary" class="form-control" min="0" step="0.01">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Staff Member</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Equipment Modal -->
+  <div id="edit-equipment-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>✏️ Edit Equipment</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-equipment-form" class="modal-body">
+        <input type="hidden" id="edit-equipment-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-equipment-name">Name *</label>
+            <input type="text" id="edit-equipment-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-equipment-category">Category *</label>
+            <select id="edit-equipment-category" class="form-control" required>
+              <option value="">Select Category</option>
+              <option value="CUE">Cue</option>
+              <option value="BALLS">Balls</option>
+              <option value="CHALK">Chalk</option>
+              <option value="CLOTH">Cloth</option>
+              <option value="LIGHTS">Lights</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-equipment-description">Description</label>
+          <textarea id="edit-equipment-description" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-equipment-quantity">Total Quantity *</label>
+            <input type="number" id="edit-equipment-quantity" class="form-control" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-equipment-cost">Unit Cost (₹) *</label>
+            <input type="number" id="edit-equipment-cost" class="form-control" min="0" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-equipment-reorder-level">Reorder Level</label>
+            <input type="number" id="edit-equipment-reorder-level" class="form-control" min="0">
+          </div>
+          <div class="form-group">
+            <label for="edit-equipment-location">Location</label>
+            <input type="text" id="edit-equipment-location" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-equipment-condition">Condition</label>
+            <select id="edit-equipment-condition" class="form-control">
+              <option value="EXCELLENT">Excellent</option>
+              <option value="GOOD">Good</option>
+              <option value="FAIR">Fair</option>
+              <option value="POOR">Poor</option>
+              <option value="DAMAGED">Damaged</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Equipment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Consumable Modal -->
+  <div id="edit-consumable-modal" class="modal">
+    <div class="modal-content modal-wide">
+      <div class="modal-header">
+        <h3>✏️ Edit Consumable</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-consumable-form" class="modal-body">
+        <input type="hidden" id="edit-consumable-id">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-consumable-name">Name *</label>
+            <input type="text" id="edit-consumable-name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-consumable-category">Category *</label>
+            <select id="edit-consumable-category" class="form-control" required>
+              <option value="">Select Category</option>
+              <option value="FOOD">Food</option>
+              <option value="BEVERAGE">Beverage</option>
+              <option value="CLEANING">Cleaning</option>
+              <option value="MAINTENANCE">Maintenance</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-consumable-description">Description</label>
+          <textarea id="edit-consumable-description" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-consumable-stock">Current Stock *</label>
+            <input type="number" id="edit-consumable-stock" class="form-control" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-consumable-cost">Unit Cost (₹) *</label>
+            <input type="number" id="edit-consumable-cost" class="form-control" min="0" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-consumable-reorder-level">Reorder Level</label>
+            <input type="number" id="edit-consumable-reorder-level" class="form-control" min="0">
+          </div>
+          <div class="form-group">
+            <label for="edit-consumable-expiry">Expiry Date</label>
+            <input type="date" id="edit-consumable-expiry" class="form-control">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-consumable-location">Storage Location</label>
+            <input type="text" id="edit-consumable-location" class="form-control">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Consumable</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Vendor Modal -->
+  <div id="edit-vendor-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Edit Vendor</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-vendor-form" class="modal-body">
+        <input type="hidden" id="edit-vendor-id">
+        <div class="form-group">
+          <label for="edit-vendor-name">Company Name *</label>
+          <input type="text" id="edit-vendor-name" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-vendor-contact">Contact Person</label>
+          <input type="text" id="edit-vendor-contact" class="form-control">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-vendor-phone">Phone</label>
+            <input type="tel" id="edit-vendor-phone" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-vendor-email">Email</label>
+            <input type="email" id="edit-vendor-email" class="form-control">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-vendor-address">Address</label>
+          <textarea id="edit-vendor-address" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-vendor-payment-terms">Payment Terms</label>
+            <input type="text" id="edit-vendor-payment-terms" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="edit-vendor-rating">Rating</label>
+            <select id="edit-vendor-rating" class="form-control">
+              <option value="5" selected>⭐⭐⭐⭐⭐ (5)</option>
+              <option value="4">⭐⭐⭐⭐ (4)</option>
+              <option value="3">⭐⭐⭐ (3)</option>
+              <option value="2">⭐⭐ (2)</option>
+              <option value="1">⭐ (1)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Vendor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Shift Modal -->
+  <div id="edit-shift-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>✏️ Edit Shift</h3>
+        <button class="btn btn-icon modal-close">&times;</button>
+      </div>
+      <form id="edit-shift-form" class="modal-body">
+        <input type="hidden" id="edit-shift-id">
+        <div class="form-group">
+          <label for="edit-shift-staff">Staff Member *</label>
+          <select id="edit-shift-staff" class="form-control" required>
+            <option value="">Select Staff Member</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-shift-date">Date *</label>
+            <input type="date" id="edit-shift-date" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-shift-type">Shift Type</label>
+            <select id="edit-shift-type" class="form-control">
+              <option value="Regular">Regular</option>
+              <option value="Overtime">Overtime</option>
+              <option value="Holiday">Holiday</option>
+              <option value="Training">Training</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-shift-start">Start Time *</label>
+            <input type="time" id="edit-shift-start" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-shift-end">End Time *</label>
+            <input type="time" id="edit-shift-end" class="form-control" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-shift-break">Break Duration (minutes)</label>
+            <input type="number" id="edit-shift-break" class="form-control" min="0">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="edit-shift-notes">Notes</label>
+          <textarea id="edit-shift-notes" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+          <button type="submit" class="btn btn-primary">💾 Update Shift</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- Scripts -->
