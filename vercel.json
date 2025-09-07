@@ -1,7 +1,8 @@
 {
   "version": 2,
   "builds": [
-    { "src": "landing/index.html", "use": "@vercel/static" }
+    { "src": "landing/**", "use": "@vercel/static" },
+    { "src": "web/**", "use": "@vercel/static" }
   ],
   "routes": [
     { "src": "/web/(.*)", "dest": "web/$1" },
