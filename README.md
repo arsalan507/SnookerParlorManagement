@@ -171,6 +171,17 @@ GET /api/reports/daily.csv    - Export daily report
 - ❌ No settings access
 - ❌ Cannot modify tables or pricing
 
+## 🚀 Deployment Guide
+
+Ready to deploy your Snooker Parlor Dashboard to the cloud? Check out our comprehensive [**Deployment Guide**](DEPLOYMENT_GUIDE.md) for:
+
+- **Free Cloud Hosting** with Vercel, Railway, or Render
+- **Custom Domain Setup** (snookheroes.com + dashboard.snookheroes.com)
+- **Landing Page Creation** with professional design
+- **Database Migration** to production
+- **SSL Certificates** and security setup
+- **Cost Breakdown** (starts at ₹67/month)
+
 ## 📈 Feature Roadmap
 
 For detailed information about completed features and future development plans, see our comprehensive [**Feature Roadmap**](FEATURE_ROADMAP.md).

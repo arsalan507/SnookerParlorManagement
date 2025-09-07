@@ -137,10 +137,22 @@ class AppState {
       roleElement.classList.add('admin');
     }
 
-    // Show/hide admin-only elements
-    if (this.auth.isAdmin()) {
-      document.getElementById('settings-btn').style.display = 'inline-block';
-    }
+    // Show/hide admin-only elements immediately
+    const isAdmin = this.auth.isAdmin();
+    const adminElements = ['settings-btn', 'inventory-btn', 'staff-btn', 'membership-btn'];
+
+    adminElements.forEach(elementId => {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.style.display = isAdmin ? 'inline-block' : 'none';
+        // Also disable the element for non-admins to prevent accidental clicks
+        if (!isAdmin) {
+          element.disabled = true;
+          element.style.pointerEvents = 'none';
+          element.style.opacity = '0.5';
+        }
+      }
+    });
 
     // Load and display parlor name
     this.loadParlorName();
@@ -1139,6 +1151,11 @@ class AppState {
         fetch('/api/inventory/transactions?limit=50', { headers })
       ]);
 
+      if (equipmentRes.status === 403) {
+        this.showToast('Inventory management requires admin access', 'warning');
+        return;
+      }
+
       if (equipmentRes.ok) {
         this.equipment = await equipmentRes.json();
       }
@@ -1544,12 +1561,14 @@ class AppState {
         this.members = [];
       }
 
-      if (tiersRes.ok) {
-        this.membershipTiers = await tiersRes.json();
-        console.log('✅ Membership tiers fetched successfully:', this.membershipTiers.length, 'tiers');
-      } else if (tiersRes.status === 403) {
+      if (tiersRes.status === 403) {
         console.log('Membership tiers not accessible - user may not have required permissions');
         this.membershipTiers = [];
+        this.showToast('Membership management requires admin access', 'warning');
+        return;
+      } else if (tiersRes.ok) {
+        this.membershipTiers = await tiersRes.json();
+        console.log('✅ Membership tiers fetched successfully:', this.membershipTiers.length, 'tiers');
       }
 
       this.renderMembership();
@@ -1827,187 +1846,71 @@ class AppState {
 
   async viewMemberAnalytics(memberId) {
     try {
-      const response = await fetch(`/api/customers/${memberId}/analytics`, {
+      const response = await fetch(`/api/customers/${memberId}`, {
         headers: this.auth.getAuthHeaders()
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const customer = await response.json();
 
-        // Display enhanced analytics
+        // Display simple customer information
         const content = document.getElementById('analytics-content');
         if (content) {
           content.innerHTML = `
             <div class="member-analytics">
-              <!-- Member Header -->
               <div class="member-header">
                 <div class="member-info">
-                  <h3>${data.customer.name}</h3>
+                  <h3>${customer.name}</h3>
                   <div class="member-details">
-                    <span class="membership-badge ${data.customer.membership_type?.toLowerCase() || 'regular'}">
-                      ${data.customer.membership_type || 'Regular'}
+                    <span class="membership-badge ${customer.membership_type?.toLowerCase() || 'regular'}">
+                      ${customer.membership_type || 'Regular'}
                     </span>
-                    <span class="phone">${data.customer.phone}</span>
-                  </div>
-                </div>
-                <div class="member-stats">
-                  <div class="stat-item">
-                    <span class="stat-value">${data.analytics.current_streak}</span>
-                    <span class="stat-label">Current Streak</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-value">${data.analytics.max_streak}</span>
-                    <span class="stat-label">Max Streak</span>
-                  </div>
-                  <div class="stat-item">
-                    <span class="stat-value">${data.analytics.loyalty_points}</span>
-                    <span class="stat-label">Loyalty Points</span>
+                    <span class="phone">${customer.phone}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Streak Calendar -->
               <div class="analytics-section">
-                <h4>🎯 Activity Calendar</h4>
-                <div class="streak-calendar">
-                  ${this.generateStreakCalendar(data.streak_data)}
-                </div>
-                <div class="calendar-legend">
-                  <div class="legend-item">
-                    <div class="legend-color none"></div>
-                    <span>No sessions</span>
+                <h4>📊 Customer Information</h4>
+                <div class="customer-info-grid">
+                  <div class="info-item">
+                    <span class="info-label">Name:</span>
+                    <span class="info-value">${customer.name}</span>
                   </div>
-                  <div class="legend-item">
-                    <div class="legend-color low"></div>
-                    <span>1 session</span>
+                  <div class="info-item">
+                    <span class="info-label">Phone:</span>
+                    <span class="info-value">${customer.phone}</span>
                   </div>
-                  <div class="legend-item">
-                    <div class="legend-color medium"></div>
-                    <span>2-3 sessions</span>
+                  <div class="info-item">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">${customer.email || 'Not provided'}</span>
                   </div>
-                  <div class="legend-item">
-                    <div class="legend-color high"></div>
-                    <span>4+ sessions</span>
+                  <div class="info-item">
+                    <span class="info-label">Membership:</span>
+                    <span class="info-value">${customer.membership_type || 'Regular'}</span>
                   </div>
-                </div>
-              </div>
-
-              <!-- Key Metrics -->
-              <div class="analytics-section">
-                <h4>📊 Key Metrics</h4>
-                <div class="metrics-grid">
-                  <div class="metric-card">
-                    <div class="metric-icon">🎱</div>
-                    <div class="metric-data">
-                      <div class="metric-value">${data.analytics.total_sessions}</div>
-                      <div class="metric-label">Total Sessions</div>
-                    </div>
+                  <div class="info-item">
+                    <span class="info-label">Join Date:</span>
+                    <span class="info-value">${customer.membership_start_date ? new Date(customer.membership_start_date).toLocaleDateString() : 'N/A'}</span>
                   </div>
-                  <div class="metric-card">
-                    <div class="metric-icon">💰</div>
-                    <div class="metric-data">
-                      <div class="metric-value">₹${data.analytics.total_spent.toLocaleString('en-IN')}</div>
-                      <div class="metric-label">Total Spent</div>
-                    </div>
-                  </div>
-                  <div class="metric-card">
-                    <div class="metric-icon">⏱️</div>
-                    <div class="metric-data">
-                      <div class="metric-value">${data.analytics.avg_session_duration} min</div>
-                      <div class="metric-label">Avg Duration</div>
-                    </div>
-                  </div>
-                  <div class="metric-card">
-                    <div class="metric-icon">💵</div>
-                    <div class="metric-data">
-                      <div class="metric-value">₹${Math.round(data.analytics.avg_spending_per_session).toLocaleString('en-IN')}</div>
-                      <div class="metric-label">Avg per Session</div>
-                    </div>
+                  <div class="info-item">
+                    <span class="info-label">Loyalty Points:</span>
+                    <span class="info-value">${customer.loyalty_points || 0}</span>
                   </div>
                 </div>
               </div>
 
-              <!-- Session Breakdown -->
               <div class="analytics-section">
-                <h4>🎯 Session Breakdown</h4>
-                <div class="breakdown-grid">
-                  <div class="breakdown-item">
-                    <div class="breakdown-value">${data.analytics.paid_sessions}</div>
-                    <div class="breakdown-label">Paid Sessions</div>
+                <h4>💰 Spending Summary</h4>
+                <div class="spending-summary">
+                  <div class="summary-item">
+                    <span class="summary-label">Total Spent:</span>
+                    <span class="summary-value">₹${(customer.total_spent || 0).toLocaleString('en-IN')}</span>
                   </div>
-                  <div class="breakdown-item">
-                    <div class="breakdown-value">${data.analytics.friendly_sessions}</div>
-                    <div class="breakdown-label">Friendly Games</div>
+                  <div class="summary-item">
+                    <span class="summary-label">Last Visit:</span>
+                    <span class="summary-value">${customer.last_visit ? new Date(customer.last_visit).toLocaleDateString() : 'Never'}</span>
                   </div>
-                </div>
-              </div>
-
-              <!-- Table Usage -->
-              <div class="analytics-section">
-                <h4>🎱 Table Preferences</h4>
-                <div class="table-usage">
-                  ${Object.entries(data.analytics.table_usage).map(([tableType, stats]) => `
-                    <div class="table-usage-item">
-                      <div class="table-type">${tableType}</div>
-                      <div class="table-stats">
-                        <div class="stat">${stats.sessions} sessions</div>
-                        <div class="stat">₹${stats.total_spent.toLocaleString('en-IN')} spent</div>
-                        <div class="stat">${Math.round(stats.total_duration / stats.sessions)} min avg</div>
-                      </div>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-
-              <!-- Monthly Spending Chart -->
-              <div class="analytics-section">
-                <h4>📈 Monthly Spending</h4>
-                <div class="monthly-chart">
-                  ${Object.entries(data.analytics.monthly_spending).map(([month, amount]) => `
-                    <div class="month-bar">
-                      <div class="month-label">${new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: '2-digit' })}</div>
-                      <div class="bar-container">
-                        <div class="bar" style="width: ${Math.min((amount / Math.max(...Object.values(data.analytics.monthly_spending))) * 100, 100)}%"></div>
-                      </div>
-                      <div class="amount">₹${amount.toLocaleString('en-IN')}</div>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-
-              <!-- Peak Hours -->
-              <div class="analytics-section">
-                <h4>🕐 Peak Hours</h4>
-                <div class="peak-hours">
-                  ${Object.entries(data.analytics.hourly_stats).map(([hour, sessions]) => `
-                    <div class="hour-bar">
-                      <div class="hour-label">${hour}:00</div>
-                      <div class="hour-bar-container">
-                        <div class="hour-bar-fill" style="height: ${Math.min((sessions / Math.max(...Object.values(data.analytics.hourly_stats))) * 100, 100)}%"></div>
-                      </div>
-                      <div class="hour-count">${sessions}</div>
-                    </div>
-                  `).join('')}
-                </div>
-              </div>
-
-              <!-- Recent Sessions -->
-              <div class="analytics-section">
-                <h4>📋 Recent Sessions</h4>
-                <div class="recent-sessions">
-                  ${data.recent_sessions.map(session => `
-                    <div class="session-item">
-                      <div class="session-date">${new Date(session.start_time).toLocaleDateString()}</div>
-                      <div class="session-details">
-                        <div class="session-table">Table ${session.table_id} (${session.table_type})</div>
-                        <div class="session-duration">${session.billed_minutes || 0} minutes</div>
-                        <div class="session-amount">₹${(session.amount || 0).toLocaleString('en-IN')}</div>
-                      </div>
-                      <div class="session-status ${session.is_friendly ? 'friendly' : 'paid'}">
-                        ${session.is_friendly ? 'Friendly' : 'Paid'}
-                      </div>
-                    </div>
-                  `).join('')}
                 </div>
               </div>
             </div>
@@ -2022,90 +1925,6 @@ class AppState {
     }
   }
 
-  generateStreakCalendar(streakData) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    // Group data by month and week
-    const calendarData = {};
-    const today = new Date();
-
-    // Initialize last 12 months
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      calendarData[monthKey] = {
-        month: months[date.getMonth()],
-        year: date.getFullYear(),
-        weeks: []
-      };
-
-      // Create weeks for this month
-      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-      const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      const startDate = new Date(firstDay);
-      startDate.setDate(startDate.getDate() - firstDay.getDay()); // Start from Sunday
-
-      const weeks = [];
-      let currentWeek = [];
-
-      for (let d = new Date(startDate); d <= lastDay || currentWeek.length < 7; d.setDate(d.getDate() + 1)) {
-        const dateKey = d.toISOString().slice(0, 10);
-        const count = streakData[dateKey] || 0;
-        const isCurrentMonth = d.getMonth() === date.getMonth() && d.getFullYear() === date.getFullYear();
-
-        currentWeek.push({
-          date: d.getDate(),
-          count: count,
-          isCurrentMonth: isCurrentMonth,
-          dateKey: dateKey
-        });
-
-        if (currentWeek.length === 7) {
-          weeks.push(currentWeek);
-          currentWeek = [];
-        }
-      }
-
-      if (currentWeek.length > 0) {
-        weeks.push(currentWeek);
-      }
-
-      calendarData[monthKey].weeks = weeks;
-    }
-
-    // Generate HTML
-    let html = '<div class="calendar-months">';
-
-    Object.values(calendarData).forEach(monthData => {
-      html += `
-        <div class="calendar-month">
-          <div class="month-header">${monthData.month} ${monthData.year}</div>
-          <div class="month-grid">
-            ${days.map(day => `<div class="day-label">${day}</div>`).join('')}
-            ${monthData.weeks.map(week =>
-              week.map(day => `
-                <div class="calendar-day ${day.isCurrentMonth ? '' : 'other-month'} ${this.getStreakClass(day.count)}"
-                     title="${day.date}: ${day.count} session${day.count !== 1 ? 's' : ''}">
-                  ${day.isCurrentMonth ? day.date : ''}
-                </div>
-              `).join('')
-            ).join('')}
-          </div>
-        </div>
-      `;
-    });
-
-    html += '</div>';
-    return html;
-  }
-
-  getStreakClass(count) {
-    if (count === 0) return 'none';
-    if (count === 1) return 'low';
-    if (count <= 3) return 'medium';
-    return 'high';
-  }
 
   switchMembershipTab(tabName) {
     // Update active tab
@@ -2509,6 +2328,18 @@ class AppState {
     if (staffBtn) staffBtn.style.display = 'none';
     if (reportsBtn) reportsBtn.style.display = 'none';
 
+    // Hide "Add Staff" button for employees
+    const addStaffBtn = document.getElementById('add-staff-btn');
+    if (addStaffBtn) {
+      if (this.auth.isAdmin()) {
+        addStaffBtn.style.display = 'inline-block';
+        addStaffBtn.disabled = false;
+      } else {
+        addStaffBtn.style.display = 'none';
+        addStaffBtn.disabled = true;
+      }
+    }
+
     // Load staff data
     this.loadStaffData();
   }
@@ -2540,10 +2371,50 @@ class AppState {
     const reportsBtn = document.getElementById('reports-btn');
 
     if (dashboardBtn) dashboardBtn.style.display = 'none';
-    if (inventoryBtn) inventoryBtn.style.display = 'inline-block';
-    if (staffBtn) staffBtn.style.display = 'inline-block';
-    if (membershipBtn) membershipBtn.style.display = 'inline-block';
     if (reportsBtn) reportsBtn.style.display = 'inline-block';
+
+    // Show admin-only buttons only for admins
+    const isAdmin = this.auth.isAdmin();
+    if (isAdmin) {
+      if (inventoryBtn) {
+        inventoryBtn.style.display = 'inline-block';
+        inventoryBtn.disabled = false;
+        inventoryBtn.style.pointerEvents = 'auto';
+        inventoryBtn.style.opacity = '1';
+      }
+      if (staffBtn) {
+        staffBtn.style.display = 'inline-block';
+        staffBtn.disabled = false;
+        staffBtn.style.pointerEvents = 'auto';
+        staffBtn.style.opacity = '1';
+      }
+      if (membershipBtn) {
+        membershipBtn.style.display = 'inline-block';
+        membershipBtn.disabled = false;
+        membershipBtn.style.pointerEvents = 'auto';
+        membershipBtn.style.opacity = '1';
+      }
+    } else {
+      // Ensure admin buttons are hidden and disabled for non-admins
+      if (inventoryBtn) {
+        inventoryBtn.style.display = 'none';
+        inventoryBtn.disabled = true;
+        inventoryBtn.style.pointerEvents = 'none';
+        inventoryBtn.style.opacity = '0.5';
+      }
+      if (staffBtn) {
+        staffBtn.style.display = 'none';
+        staffBtn.disabled = true;
+        staffBtn.style.pointerEvents = 'none';
+        staffBtn.style.opacity = '0.5';
+      }
+      if (membershipBtn) {
+        membershipBtn.style.display = 'none';
+        membershipBtn.disabled = true;
+        membershipBtn.style.pointerEvents = 'none';
+        membershipBtn.style.opacity = '0.5';
+      }
+    }
 
     // Refresh dashboard data
     this.loadData();
@@ -2558,6 +2429,11 @@ class AppState {
         fetch('/api/staff/attendance', { headers }),
         fetch('/api/staff/leave', { headers })
       ]);
+
+      if (staffRes.status === 403) {
+        this.showToast('Staff management requires admin access', 'warning');
+        return;
+      }
 
       if (staffRes.ok) {
         this.staff = await staffRes.json();
@@ -2601,7 +2477,7 @@ class AppState {
       tbody.innerHTML = `
         <tr>
           <td colspan="7" class="text-center" style="padding: 2rem; color: var(--text-muted);">
-            No staff members found. Add your first staff member.
+            No staff members found. ${this.auth.isAdmin() ? 'Add your first staff member.' : ''}
           </td>
         </tr>
       `;
@@ -2615,6 +2491,12 @@ class AppState {
         '<span class="badge badge-success">Active</span>' :
         '<span class="badge badge-secondary">Inactive</span>';
 
+      // Show action buttons only for admins
+      const actions = this.auth.isAdmin() ?
+        `<button class="btn btn-sm btn-outline" onclick="app.editStaff(${member.user_id})">Edit</button>
+         <button class="btn btn-sm btn-danger" onclick="app.deleteStaff(${member.user_id})">Delete</button>` :
+        '<span class="text-muted">No actions available</span>';
+
       row.innerHTML = `
         <td>${member.full_name}</td>
         <td>${member.employee_id || 'N/A'}</td>
@@ -2622,10 +2504,7 @@ class AppState {
         <td>${member.position}</td>
         <td>${member.role}</td>
         <td>${statusBadge}</td>
-        <td>
-          <button class="btn btn-sm btn-outline" onclick="app.editStaff(${member.user_id})">Edit</button>
-          <button class="btn btn-sm btn-danger" onclick="app.deleteStaff(${member.user_id})">Delete</button>
-        </td>
+        <td>${actions}</td>
       `;
 
       tbody.appendChild(row);
@@ -2797,6 +2676,12 @@ class AppState {
   }
 
   async addStaff(formData) {
+    // Client-side check to prevent employees from adding staff
+    if (!this.auth.isAdmin()) {
+      this.showToast('Only administrators can add staff members', 'error');
+      return;
+    }
+
     try {
       const response = await fetch('/api/staff', {
         method: 'POST',
@@ -2987,6 +2872,11 @@ class AppState {
   // ===== STAFF CRUD OPERATIONS =====
 
   async editStaff(userId) {
+    if (!this.auth.isAdmin()) {
+      this.showToast('Only administrators can edit staff members', 'warning');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/staff/${userId}`, {
         headers: this.auth.getAuthHeaders()
@@ -3012,6 +2902,11 @@ class AppState {
   }
 
   async deleteStaff(userId) {
+    if (!this.auth.isAdmin()) {
+      this.showToast('Only administrators can delete staff members', 'warning');
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) {
       return;
     }
@@ -3572,16 +3467,20 @@ function setupEventListeners() {
   
   // Settings button (admin only)
   document.getElementById('settings-btn')?.addEventListener('click', () => {
-    window.location.href = '/settings.html';
+    if (app.auth.isAdmin()) {
+      window.location.href = '/settings.html';
+    } else {
+      app.showToast('Settings require admin access', 'warning');
+    }
   });
   
   // Start session form
   document.getElementById('start-session-form')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    
+
     const formData = new FormData(e.target);
     const tableId = document.getElementById('selected-table-id').value;
-    
+
     const sessionData = {
       is_friendly: document.getElementById('is-friendly').checked,
       customer_name: document.getElementById('customer-name').value || null,
@@ -3590,8 +3489,177 @@ function setupEventListeners() {
       payment_method: document.getElementById('payment-method').value || 'CASH',
       discount_percent: parseInt(document.getElementById('discount-percent').value) || 0
     };
-    
+
     app.startSession(parseInt(tableId), sessionData);
+  });
+
+  // Customer autocomplete functionality
+  const customerNameInput = document.getElementById('customer-name');
+  const customerPhoneInput = document.getElementById('customer-phone');
+  const suggestionsContainer = document.getElementById('customer-suggestions');
+
+  let currentSuggestions = [];
+  let selectedSuggestionIndex = -1;
+
+  // Debounce function for search
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Search customers
+  const searchCustomers = debounce(async (query) => {
+    if (!query || query.length < 2) {
+      hideSuggestions();
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/customers?search=${encodeURIComponent(query)}`, {
+        headers: app.auth.getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const customers = await response.json();
+        showSuggestions(customers.slice(0, 5)); // Limit to 5 suggestions
+      } else {
+        hideSuggestions();
+      }
+    } catch (error) {
+      console.error('Error searching customers:', error);
+      hideSuggestions();
+    }
+  }, 300);
+
+  // Show suggestions
+  function showSuggestions(customers) {
+    currentSuggestions = customers;
+    selectedSuggestionIndex = -1;
+
+    if (customers.length === 0) {
+      hideSuggestions();
+      return;
+    }
+
+    suggestionsContainer.innerHTML = '';
+
+    customers.forEach((customer, index) => {
+      const suggestion = document.createElement('div');
+      suggestion.className = 'autocomplete-suggestion';
+      suggestion.setAttribute('data-index', index);
+
+      suggestion.innerHTML = `
+        <div class="name">${customer.name}</div>
+        <div class="phone">${customer.phone}</div>
+        <div class="tier ${customer.membership_type.toLowerCase()}">${customer.membership_type}</div>
+      `;
+
+      suggestion.addEventListener('click', () => selectSuggestion(customer));
+      suggestion.addEventListener('mouseenter', () => {
+        selectedSuggestionIndex = index;
+        updateSelection();
+      });
+
+      suggestionsContainer.appendChild(suggestion);
+    });
+
+    suggestionsContainer.classList.add('show');
+  }
+
+  // Hide suggestions
+  function hideSuggestions() {
+    suggestionsContainer.classList.remove('show');
+    currentSuggestions = [];
+    selectedSuggestionIndex = -1;
+  }
+
+  // Select suggestion
+  function selectSuggestion(customer) {
+    customerNameInput.value = customer.name;
+    customerPhoneInput.value = customer.phone;
+    hideSuggestions();
+
+    // Focus on phone input if phone is empty
+    if (!customer.phone) {
+      customerPhoneInput.focus();
+    } else {
+      // Focus on notes or next field
+      document.getElementById('session-notes').focus();
+    }
+  }
+
+  // Update selection highlight
+  function updateSelection() {
+    const suggestions = suggestionsContainer.querySelectorAll('.autocomplete-suggestion');
+    suggestions.forEach((suggestion, index) => {
+      if (index === selectedSuggestionIndex) {
+        suggestion.classList.add('active');
+      } else {
+        suggestion.classList.remove('active');
+      }
+    });
+  }
+
+  // Input event listener
+  customerNameInput.addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    searchCustomers(query);
+  });
+
+  // Focus event listener
+  customerNameInput.addEventListener('focus', () => {
+    if (currentSuggestions.length > 0) {
+      suggestionsContainer.classList.add('show');
+    }
+  });
+
+  // Blur event listener (delayed to allow click on suggestions)
+  customerNameInput.addEventListener('blur', () => {
+    setTimeout(() => {
+      hideSuggestions();
+    }, 150);
+  });
+
+  // Keyboard navigation
+  customerNameInput.addEventListener('keydown', (e) => {
+    if (currentSuggestions.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, currentSuggestions.length - 1);
+        updateSelection();
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+        updateSelection();
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedSuggestionIndex >= 0 && currentSuggestions[selectedSuggestionIndex]) {
+          selectSuggestion(currentSuggestions[selectedSuggestionIndex]);
+        }
+        break;
+      case 'Escape':
+        e.preventDefault();
+        hideSuggestions();
+        break;
+    }
+  });
+
+  // Click outside to hide suggestions
+  document.addEventListener('click', (e) => {
+    if (!customerNameInput.contains(e.target) && !suggestionsContainer.contains(e.target)) {
+      hideSuggestions();
+    }
   });
   
   // Stop session button
@@ -3645,17 +3713,29 @@ function setupEventListeners() {
 
   // Membership management
   document.getElementById('membership-btn')?.addEventListener('click', () => {
-    app.showMembershipSection();
+    if (app.auth.isAdmin()) {
+      app.showMembershipSection();
+    } else {
+      app.showToast('Membership management requires admin access', 'warning');
+    }
   });
 
   // Inventory management
   document.getElementById('inventory-btn')?.addEventListener('click', () => {
-    app.showInventorySection();
+    if (app.auth.isAdmin()) {
+      app.showInventorySection();
+    } else {
+      app.showToast('Inventory management requires admin access', 'warning');
+    }
   });
 
   // Staff management
   document.getElementById('staff-btn')?.addEventListener('click', () => {
-    app.showStaffSection();
+    if (app.auth.isAdmin()) {
+      app.showStaffSection();
+    } else {
+      app.showToast('Staff management requires admin access', 'warning');
+    }
   });
 
   // Inventory tabs
@@ -3769,7 +3849,11 @@ function setupEventListeners() {
 
   // Staff management
   document.getElementById('add-staff-btn')?.addEventListener('click', () => {
-    app.showAddStaffModal();
+    if (app.auth.isAdmin()) {
+      app.showAddStaffModal();
+    } else {
+      app.showToast('Only administrators can add staff members', 'warning');
+    }
   });
 
   document.getElementById('manage-shifts-btn')?.addEventListener('click', () => {

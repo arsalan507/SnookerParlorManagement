@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import path from 'path';
 import url from 'url';
+import customersRouter from './customers.js';
 
 dotenv.config();
 
@@ -198,6 +199,9 @@ app.get('/api/sessions', authenticateToken, async (req, res) => {
     has_more: false
   });
 });
+
+// Customers routes
+app.use('/api/customers', customersRouter);
 
 // Health check
 app.get('/api/health', async (req, res) => {

@@ -2391,10 +2391,10 @@ app.get('/api/staff/:id', authenticateToken, async (req, res) => {
     const db = await getDB();
 
     const staff = await db.get(`
-      SELECT u.id as user_id, u.username, u.full_name, u.email, u.role, u.phone, u.created_at, u.updated_at,
-             s.employee_id, s.department, s.position, s.hire_date, s.hourly_rate, s.monthly_salary, s.employment_type
+      SELECT u.id as user_id, u.username, u.full_name, u.email, u.role, u.created_at, u.updated_at,
+             s.employee_id, s.phone, s.department, s.position, s.hire_date, s.hourly_rate, s.monthly_salary, s.employment_type
       FROM users u
-      LEFT JOIN staff_details s ON u.id = s.user_id
+      LEFT JOIN staff_profiles s ON u.id = s.user_id
       WHERE u.id = ? AND u.role IN ('employee', 'admin')
     `, staffId);
 
@@ -2432,7 +2432,7 @@ app.patch('/api/staff/:id', authenticateToken, requireAdmin, async (req, res) =>
       await db.run(`UPDATE users SET ${userSetClause} WHERE id = ?`, ...userValues);
     }
 
-    // Update or insert staff_details table
+    // Update or insert staff_profiles table
     const staffFields = ['employee_id', 'department', 'position', 'hire_date', 'hourly_rate', 'monthly_salary', 'employment_type'];
     const staffUpdates = {};
     for (const field of staffFields) {
@@ -2446,7 +2446,7 @@ app.patch('/api/staff/:id', authenticateToken, requireAdmin, async (req, res) =>
       const staffValues = Object.values(staffUpdates);
       staffValues.push(staffId);
       await db.run(`
-        INSERT OR REPLACE INTO staff_details (user_id, ${Object.keys(staffUpdates).join(', ')})
+        INSERT OR REPLACE INTO staff_profiles (user_id, ${Object.keys(staffUpdates).join(', ')})
         VALUES (?, ${Object.keys(staffUpdates).map(() => '?').join(', ')})
       `, staffId, ...staffValues);
     }
@@ -2469,8 +2469,8 @@ app.delete('/api/staff/:id', authenticateToken, requireAdmin, async (req, res) =
       return res.status(404).json({ error: 'Staff member not found' });
     }
 
-    // Delete from staff_details first (due to foreign key)
-    await db.run('DELETE FROM staff_details WHERE user_id = ?', staffId);
+    // Delete from staff_profiles first (due to foreign key)
+    await db.run('DELETE FROM staff_profiles WHERE user_id = ?', staffId);
 
     // Delete from users table
     await db.run('DELETE FROM users WHERE id = ?', staffId);
